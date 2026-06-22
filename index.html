@@ -1,1071 +1,1670 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Painel · Enfermagem Formal — RAIS</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard RAIS Enfermagem — SAD</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0;}
-  html,body{background:#0f1117;min-height:100vh;}
-  #root{min-height:100vh;}
+  :root {
+    --bg:        #0e1117;
+    --surface:   #161b27;
+    --card:      #1c2333;
+    --border:    #2a3448;
+    --accent:    #3b82f6;
+    --accent2:   #22d3ee;
+    --accent3:   #a78bfa;
+    --green:     #34d399;
+    --orange:    #fb923c;
+    --red:       #f87171;
+    --text:      #e2e8f0;
+    --muted:     #64748b;
+    --radius:    8px;
+    --font:      'Segoe UI', system-ui, sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    min-height: 100vh;
+  }
+
+  /* ── TOP BAR ── */
+  #topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 20px;
+    height: 52px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  #topbar .logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--accent2);
+    white-space: nowrap;
+  }
+  #topbar .logo svg { flex-shrink: 0; }
+  #topbar .subtitle {
+    font-size: 11px;
+    color: var(--muted);
+    border-left: 1px solid var(--border);
+    padding-left: 12px;
+    white-space: nowrap;
+  }
+  #topbar .spacer { flex: 1; }
+  #topbar .author {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+    line-height: 1.4;
+  }
+
+  /* ── TABS ── */
+  #tabs {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  #tabs::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    padding: 0 18px;
+    height: 40px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transition: color .15s, border-color .15s;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--accent2); border-bottom-color: var(--accent2); }
+
+  /* ── FILTER BAR ── */
+  #filterbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .filter-group label {
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .filter-group select {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: var(--radius);
+    padding: 4px 28px 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2364748b'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    min-width: 90px;
+    max-width: 140px;
+  }
+  .filter-group select:focus { outline: 1px solid var(--accent); }
+  #btn-clear-filters {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: var(--radius);
+    padding: 4px 12px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: color .15s, border-color .15s;
+  }
+  #btn-clear-filters:hover { color: var(--text); border-color: var(--accent); }
+  #filter-count {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  /* ── LOADING ── */
+  #loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 60vh;
+    gap: 16px;
+    color: var(--muted);
+  }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent2);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #error-box {
+    display: none;
+    background: #2d1b1b;
+    border: 1px solid var(--red);
+    border-radius: var(--radius);
+    padding: 16px 24px;
+    margin: 24px;
+    color: var(--red);
+    font-size: 13px;
+  }
+
+  /* ── MAIN CONTENT ── */
+  #main { padding: 20px; }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── KPI ROW ── */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .kpi-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .kpi-card.blue::before   { background: var(--accent); }
+  .kpi-card.cyan::before   { background: var(--accent2); }
+  .kpi-card.violet::before { background: var(--accent3); }
+  .kpi-card.green::before  { background: var(--green); }
+  .kpi-card.orange::before { background: var(--orange); }
+  .kpi-card.red::before    { background: var(--red); }
+  .kpi-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: var(--muted);
+  }
+  .kpi-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.1;
+  }
+  .kpi-sub {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* ── GRID LAYOUTS ── */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  /* ── CHART CARD ── */
+  .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .chart-card.full { grid-column: 1 / -1; }
+  .chart-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .chart-wrap {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+  }
+  .chart-wrap canvas { display: block; }
+
+  /* ── TABLE ── */
+  .table-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .table-controls input[type=text] {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    padding: 6px 12px;
+    font-size: 12px;
+    width: 220px;
+  }
+  .table-controls input[type=text]:focus { outline: 1px solid var(--accent); }
+  .table-controls button {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    padding: 6px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: border-color .15s;
+  }
+  .table-controls button:hover { border-color: var(--accent); }
+  .table-controls .spacer { flex: 1; }
+  .table-controls .pg-info { color: var(--muted); font-size: 11px; }
+
+  .table-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: auto;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  thead { position: sticky; top: 0; z-index: 2; }
+  thead th {
+    background: #222b3e;
+    padding: 9px 12px;
+    text-align: left;
+    font-weight: 600;
+    letter-spacing: .3px;
+    color: var(--muted);
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+    border-bottom: 1px solid var(--border);
+  }
+  thead th:hover { color: var(--text); }
+  thead th.sort-asc::after  { content: ' ▲'; color: var(--accent2); }
+  thead th.sort-desc::after { content: ' ▼'; color: var(--accent2); }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(59,130,246,.08); }
+  tbody td { padding: 8px 12px; color: var(--text); }
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .pagination button {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    padding: 4px 10px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .pagination button.active { background: var(--accent); border-color: var(--accent); }
+  .pagination button:disabled { opacity: .4; cursor: default; }
+
+  /* ── GENDER BADGE ── */
+  .badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .badge-f { background: rgba(167,139,250,.18); color: var(--accent3); }
+  .badge-m { background: rgba(59,130,246,.18); color: var(--accent); }
+
+  /* ── HORIZONTAL BAR ── */
+  .hbar-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .hbar-label { font-size: 11px; color: var(--muted); min-width: 100px; text-align: right; }
+  .hbar-track {
+    flex: 1;
+    background: var(--border);
+    border-radius: 4px;
+    height: 10px;
+    overflow: hidden;
+  }
+  .hbar-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: var(--accent);
+    transition: width .5s;
+  }
+  .hbar-val { font-size: 11px; color: var(--text); min-width: 60px; }
+
+  /* ── RESPONSIVENESS ── */
+  @media (max-width: 600px) {
+    #topbar .subtitle { display: none; }
+    #main { padding: 12px; }
+    .kpi-value { font-size: 18px; }
+  }
 </style>
 </head>
 <body>
-<div id="root"></div>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="logo">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <rect x="2" y="12" width="4" height="10" rx="1" fill="#22d3ee"/>
+      <rect x="8" y="7"  width="4" height="15" rx="1" fill="#3b82f6"/>
+      <rect x="14" y="2" width="4" height="20" rx="1" fill="#a78bfa"/>
+      <rect x="20" y="9" width="2" height="13" rx="1" fill="#34d399"/>
+    </svg>
+    Sistema de Apoio à Decisão - Empregabilidade dos Profissionais de Enfermagem no Brasil (RAIS)
+  </div>
+  <div class="subtitle">Análise da Empregabilidade — Brasil</div>
+  <div class="spacer"></div>
+  <div class="author">SAD · Luis Gustavo Souza Ataide</div>
+</div>
+
+<!-- TABS -->
+<div id="tabs">
+  <button class="tab-btn active" data-tab="overview">Visão Geral</button>
+  <button class="tab-btn" data-tab="perfil">Perfil</button>
+  <button class="tab-btn" data-tab="geo">Geografia</button>
+  <button class="tab-btn" data-tab="salarios">Salários</button>
+  <button class="tab-btn" data-tab="evolucao">Evolução</button>
+  <button class="tab-btn" data-tab="cnae">CNAE</button>
+  <button class="tab-btn" data-tab="estrategia">Estratégia</button>
+</div>
+
+<!-- FILTER BAR -->
+<div id="filterbar">
+  <div class="filter-group">
+    <label>Ano</label>
+    <select id="f-ano"><option value="">Todos</option></select>
+  </div>
+  <div class="filter-group">
+    <label>Mês</label>
+    <select id="f-mes"><option value="">Todos</option></select>
+  </div>
+  <div class="filter-group">
+    <label>Região</label>
+    <select id="f-regiao"><option value="">Todas</option></select>
+  </div>
+  <div class="filter-group">
+    <label>UF</label>
+    <select id="f-uf"><option value="">Todas</option></select>
+  </div>
+  <div class="filter-group">
+    <label>Município</label>
+    <select id="f-mun"><option value="">Todos</option></select>
+  </div>
+  <div class="filter-group">
+    <label>Gênero</label>
+    <select id="f-sexo"><option value="">Todos</option></select>
+  </div>
+  <div class="filter-group">
+    <label>Faixa Etária</label>
+    <select id="f-idade"><option value="">Todas</option></select>
+  </div>
+  <div class="filter-group">
+    <label>Faixa Salarial</label>
+    <select id="f-salario"><option value="">Todas</option></select>
+  </div>
+  <div class="filter-group">
+    <label>CNAE</label>
+    <select id="f-cnae"><option value="">Todos</option></select>
+  </div>
+  <div class="filter-group">
+<label>CBO</label>
+<select id="f-cbo">
+<option value="">
+Todos
+</option>
+</select>
+</div>
+  <button id="btn-clear-filters">✕ Limpar</button>
+  <div id="filter-count">— registros</div>
+</div>
+
+<!-- LOADING / ERROR -->
+<div id="loading"><div class="spinner"></div><span>Carregando dados…</span></div>
+<div id="error-box" id="error-box"></div>
+
+<!-- MAIN -->
+<div id="main" style="display:none">
+
+  <!-- ══ TAB: VISÃO GERAL ══ -->
+  <div class="tab-panel active" id="tab-overview">
+    <div class="kpi-row">
+      <div class="kpi-card blue">
+        <div class="kpi-label">Total Vínculos</div>
+        <div class="kpi-value" id="kpi-vinculos">—</div>
+        <div class="kpi-sub">empregos formais</div>
+      </div>
+      <div class="kpi-card cyan">
+        <div class="kpi-label">Municípios</div>
+        <div class="kpi-value" id="kpi-mun">—</div>
+        <div class="kpi-sub">com registros</div>
+      </div>
+      <div class="kpi-card violet">
+        <div class="kpi-label">Estados (UF)</div>
+        <div class="kpi-value" id="kpi-uf">—</div>
+        <div class="kpi-sub">cobertos</div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-label">Média Salarial</div>
+        <div class="kpi-value" id="kpi-media">—</div>
+        <div class="kpi-sub">remuneração média</div>
+      </div>
+      <div class="kpi-card orange">
+        <div class="kpi-label">Maior Salário</div>
+        <div class="kpi-value" id="kpi-max">—</div>
+        <div class="kpi-sub">remuneração máx</div>
+      </div>
+      <div class="kpi-card red">
+        <div class="kpi-label">Feminino</div>
+        <div class="kpi-value" id="kpi-fem">—</div>
+        <div class="kpi-sub">dos vínculos</div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="chart-card">
+        <div class="chart-title">Distribuição por Gênero</div>
+        <div class="chart-wrap" style="height:240px"><canvas id="ch-genero"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Vínculos por Região</div>
+        <div class="chart-wrap" style="height:240px"><canvas id="ch-regiao-geral"></canvas></div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="chart-card">
+        <div class="chart-title">Top 10 Estados</div>
+        <div class="chart-wrap" style="height:280px"><canvas id="ch-estados"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Top 10 Municípios</div>
+        <div class="chart-wrap" style="height:280px"><canvas id="ch-municipios"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TAB: PERFIL ══ -->
+  <div class="tab-panel" id="tab-perfil">
+    <div class="grid-2">
+      <div class="chart-card">
+        <div class="chart-title">Faixa Etária</div>
+        <div class="chart-wrap" style="height:280px"><canvas id="ch-faixa-etaria"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Grau de Instrução</div>
+        <div class="chart-wrap" style="height:280px"><canvas id="ch-instrucao"></canvas></div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="chart-card">
+        <div class="chart-title">Raça / Cor</div>
+        <div class="chart-wrap" style="height:260px"><canvas id="ch-raca"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Salário Médio por Gênero</div>
+        <div class="chart-wrap" style="height:260px"><canvas id="ch-sal-genero"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TAB: GEOGRAFIA ══ -->
+  <div class="tab-panel" id="tab-geo">
+    <div class="grid-3">
+      <div class="chart-card">
+        <div class="chart-title">Vínculos por Região</div>
+        <div class="chart-wrap" style="height:260px"><canvas id="ch-regiao-geo"></canvas></div>
+      </div>
+      <div class="chart-card" style="grid-column:span 2">
+        <div class="chart-title">Ranking — Top 15 Estados (vínculos)</div>
+        <div class="chart-wrap" style="height:260px"><canvas id="ch-rank-uf"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-card full">
+      <div class="chart-title">Salário Médio por Região</div>
+      <div class="chart-wrap" style="height:220px"><canvas id="ch-sal-regiao"></canvas></div>
+    </div>
+    <div class="chart-card full" style="margin-top:16px">
+      <div class="chart-title">Top 20 Municípios — Vínculos</div>
+      <div id="hbar-mun" style="padding:4px 0;max-height:360px;overflow-y:auto"></div>
+    </div>
+  </div>
+
+  <!-- ══ TAB: SALÁRIOS ══ -->
+  <div class="tab-panel" id="tab-salarios">
+    <div class="grid-2">
+      <div class="chart-card">
+        <div class="chart-title">Faixa de Remuneração (SM)</div>
+        <div class="chart-wrap" style="height:280px"><canvas id="ch-faixa-sal"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Salário Médio por Faixa Etária</div>
+        <div class="chart-wrap" style="height:280px"><canvas id="ch-sal-idade"></canvas></div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="chart-card">
+        <div class="chart-title">Salário Médio × Grau de Instrução</div>
+        <div class="chart-wrap" style="height:280px"><canvas id="ch-sal-instrucao"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Salário Médio × Raça/Cor</div>
+        <div class="chart-wrap" style="height:280px"><canvas id="ch-sal-raca"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TAB: EVOLUÇÃO ══ -->
+  <div class="tab-panel" id="tab-evolucao">
+    <div class="chart-card full" style="margin-bottom:16px">
+      <div class="chart-title">Evolução Mensal de Vínculos</div>
+      <div class="chart-wrap" style="height:300px"><canvas id="ch-evolucao-vinculos"></canvas></div>
+    </div>
+    <div class="chart-card full">
+      <div class="chart-title">Evolução Mensal da Remuneração Média</div>
+      <div class="chart-wrap" style="height:300px"><canvas id="ch-evolucao-salario"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ══ TAB: CNAE ══ -->
+  <div class="tab-panel" id="tab-cnae">
+    <div class="grid-2">
+      <div class="chart-card">
+        <div class="chart-title">Top 10 CNAEs — Vínculos</div>
+        <div class="chart-wrap" style="height:320px"><canvas id="ch-cnae-vinculos"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Top 10 CNAEs — Salário Médio</div>
+        <div class="chart-wrap" style="height:320px"><canvas id="ch-cnae-salario"></canvas></div>
+      </div>
+    </div>
+    <!-- DATA TABLE -->
+    <div class="chart-card full" style="margin-top:16px">
+      <div class="chart-title">Tabela de Dados</div>
+      <div class="table-controls">
+        <input type="text" id="tbl-search" placeholder="Buscar em qualquer coluna…">
+        <button id="btn-export-csv">⬇ Exportar CSV</button>
+        <div class="spacer"></div>
+        <div class="pg-info" id="tbl-pg-info"></div>
+        <button id="btn-prev">‹ Ant</button>
+        <button id="btn-next">Próx ›</button>
+      </div>
+      <div class="table-wrap">
+        <table id="data-table">
+          <thead>
+            <tr>
+              <th data-col="sigla_uf">UF</th>
+              <th data-col="municipio">Município</th>
+              <th data-col="regiao">Região</th>
+              <th data-col="sexo">Gênero</th>
+              <th data-col="faixa_etaria">Faixa Etária</th>
+              <th data-col="remuneracao_media">Salário Médio</th>
+              <th data-col="cnae_divisao">CNAE</th>
+              <th data-col="qtd_vinculos">Vínculos</th>
+            </tr>
+          </thead>
+          <tbody id="tbl-body"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pagination"></div>
+    </div>
+  </div>
+<!-- TAB ESTRATÉGICA -->
+
+<div class="tab-panel" id="tab-estrategia">
+
+
+<div class="kpi-row">
+
+<div class="kpi-card blue">
+<div class="kpi-label">
+Profissionais Predominantes
+</div>
+<div class="kpi-value" id="st-perfil">
+—
+</div>
+<div class="kpi-sub">
+Perfil mais frequente
+</div>
+</div>
+
+
+<div class="kpi-card green">
+<div class="kpi-label">
+Crescimento Último Ano
+</div>
+<div class="kpi-value" id="st-crescimento">
+—
+</div>
+<div class="kpi-sub">
+Evolução de vínculos
+</div>
+</div>
+
+
+
+<div class="kpi-card orange">
+<div class="kpi-label">
+Maior Mercado
+</div>
+<div class="kpi-value" id="st-regiao">
+—
+</div>
+<div class="kpi-sub">
+Região dominante
+</div>
+</div>
+
+
+
+<div class="kpi-card violet">
+<div class="kpi-label">
+Maior CNAE
+</div>
+<div class="kpi-value" id="st-cnae">
+—
+</div>
+<div class="kpi-sub">
+Principal empregador
+</div>
+</div>
+
+
+</div>
+
+
+
+<div class="grid-2">
+
+
+<div class="chart-card">
+
+<div class="chart-title">
+Comparação por Ano
+</div>
+
+<div class="chart-wrap" style="height:300px">
+
+<canvas id="ch-comparacao-ano"></canvas>
+
+</div>
+
+</div>
+
+
+
+
+<div class="chart-card">
+
+<div class="chart-title">
+Diferença Salarial por Gênero
+</div>
+
+
+<div class="chart-wrap" style="height:300px">
+
+<canvas id="ch-gap-salarial"></canvas>
+
+</div>
+
+
+</div>
+
+
+</div>
+
+
+
+
+<div class="chart-card">
+
+<div class="chart-title">
+Recomendações para Decisão Estratégica
+</div>
+
+
+<div id="insights"
+style="
+font-size:14px;
+line-height:1.8;
+color:#cbd5e1;
+padding:20px">
+
+Carregando análise...
+
+</div>
+
+
+</div>
+
+
+
+</div>
+</div><!-- /#main -->
+
 <script>
-const { useState, useMemo, useEffect } = React;
+// ════════════════════════════════════════════════
+//  CONFIG
+// ════════════════════════════════════════════════
+const CSV_URL = "https://raw.githubusercontent.com/gustavoataidez/sad2026/refs/heads/main/sad-reposicao.csv"; // substitua pelo URL real
 
-// ─── CSV → DATA builder ──────────────────────────────────────────────────────
-const CSV_URL = "https://raw.githubusercontent.com/gustavoataidez/sad2026/refs/heads/main/sad-reposicao.csv";
+// ════════════════════════════════════════════════
+//  GLOBALS
+// ════════════════════════════════════════════════
+let rawData = [];
+let filteredData = [];
+let charts = {};
+let tblPage = 1;
+const TBL_PER_PAGE = 15;
+let tblSort = { col: null, dir: 1 };
+let tblSearch = '';
 
-function parseCSV(text) {
-  const lines = text.trim().split("\n");
-  const headers = lines[0].split(",").map(h => h.trim());
-  return lines.slice(1).map(line => {
-    // handle potential commas inside quoted fields
-    const vals = [];
-    let cur = "", inQ = false;
-    for (const ch of line) {
-      if (ch === '"') { inQ = !inQ; }
-      else if (ch === "," && !inQ) { vals.push(cur); cur = ""; }
-      else { cur += ch; }
+const MONTH_NAMES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+const PALETTE = [
+  '#3b82f6','#22d3ee','#a78bfa','#34d399','#fb923c','#f87171',
+  '#facc15','#e879f9','#4ade80','#60a5fa','#f472b6','#fbbf24'
+];
+
+const CHART_DEFAULTS = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 12 }
+    },
+    tooltip: {
+      backgroundColor: '#1c2333',
+      titleColor: '#e2e8f0',
+      bodyColor: '#94a3b8',
+      borderColor: '#2a3448',
+      borderWidth: 1
     }
-    vals.push(cur);
-    const row = {};
-    headers.forEach((h, i) => row[h] = vals[i] !== undefined ? vals[i].trim() : "");
-    return row;
+  },
+  scales: {}
+};
+
+function axisStyle() {
+  return {
+    ticks: { color: '#64748b', font: { size: 10 } },
+    grid:  { color: '#1e2a3b' },
+    border:{ color: '#2a3448' }
+  };
+}
+
+// ════════════════════════════════════════════════
+//  LOAD CSV
+// ════════════════════════════════════════════════
+function loadData() {
+  Papa.parse(CSV_URL, {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+    dynamicTyping: true,
+    complete(results) {
+      rawData = results.data;
+      if (!rawData.length) {
+        showError('CSV carregado mas sem dados. Verifique o URL.');
+        return;
+      }
+      initFilters();
+      applyFilters();
+      showDashboard();
+    },
+    error(err) {
+      showError('Erro ao carregar CSV: ' + err.message +
+        '<br>Verifique se o URL está correto e acessível (CORS).');
+    }
   });
 }
 
-// Ordered labels para faixas etárias (códigos numéricos no CSV)
-const FE_LABELS = {
-  "1": "Até 17", "2": "18-24", "3": "25-29", "4": "30-34",
-  "5": "35-39", "6": "40-44", "7": "45-49", "8": "50-54",
-  "9": "55-59", "10": "60-64", "11": "65-69", "12": "70+"
-};
-const FE_ORDER = ["1","2","3","4","5","6","7","8","9","10","11","12"];
+function showError(msg) {
+  document.getElementById('loading').style.display = 'none';
+  const box = document.getElementById('error-box');
+  box.innerHTML = '⚠ ' + msg;
+  box.style.display = 'block';
+}
 
-// Ordered labels para faixas salariais (SM)
-const FSM_LABELS = {
-  "1": "Até 0,5", "2": "0,5 a 1", "3": "1 a 1,5", "4": "1,5 a 2",
-  "5": "2 a 3", "6": "3 a 5", "7": "5 a 7", "8": "7 a 10",
-  "9": "10 a 15", "10": "15 a 20", "11": "Acima de 20", "99": "N/C"
-};
-const FSM_ORDER = ["1","2","3","4","5","6","7","8","9","10","11","99"];
+function showDashboard() {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('main').style.display = 'block';
+}
 
-function buildDATA(rows) {
-  // ── 1. Coletar categorias únicas e ordenadas ─────────────────────────
-  const uniq = (arr) => [...new Set(arr)].sort();
-
-  const ocupSet  = uniq(rows.map(r => r.ocupacao));
-  const sexoSet  = uniq(rows.map(r => r.sexo));
-  const regSet   = uniq(rows.map(r => r.regiao));
-  const ufSet    = uniq(rows.map(r => r.sigla_uf));
-  const racaSet  = uniq(rows.map(r => r.raca_cor));
-  const grauSet  = rows.map(r => r.grau_instrucao); // preservar ordem natural depois
-  const cnaeSet  = uniq(rows.map(r => r.cnae_divisao));
-
-  // Grau: ordem educacional conhecida
-  const GRAU_ORDER = [
-    "Analfabeto","Até 5ª Incompleto","5ª Completo Fundamental",
-    "6ª a 9ª Fundamental","Fundamental Completo","Médio Incompleto",
-    "Médio Completo","Superior Incompleto","Superior Completo",
-    "Mestrado","Doutorado"
-  ];
-  const grauUniq = [...new Set(grauSet)];
-  grauUniq.sort((a,b) => {
-    const ia = GRAU_ORDER.indexOf(a), ib = GRAU_ORDER.indexOf(b);
-    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+// ════════════════════════════════════════════════
+//  FILTERS
+// ════════════════════════════════════════════════
+function uniq(arr, col) {
+  return [...new Set(arr.map(r => r[col]).filter(v => v != null && v !== ''))].sort((a, b) => {
+    if (typeof a === 'number') return a - b;
+    return String(a).localeCompare(String(b), 'pt-BR');
   });
-  const grauOrd = {};
-  grauUniq.forEach((g, i) => grauOrd[i] = i);
-
-  // Faixas etárias e salariais: usar apenas as que existem no CSV, na ordem definida
-  const feCodesPresent = [...new Set(rows.map(r => r.faixa_etaria))];
-  const feOrdered = FE_ORDER.filter(c => feCodesPresent.includes(c));
-  const fsmCodesPresent = [...new Set(rows.map(r => r.faixa_remuneracao_media_sm))];
-  const fsmOrdered = FSM_ORDER.filter(c => fsmCodesPresent.includes(c));
-
-  // ── 2. Índices → label (maps) ─────────────────────────────────────────
-  const maps = {
-    ocup: ocupSet,
-    sexo: sexoSet,
-    reg:  regSet,
-    uf:   ufSet,
-    raca: racaSet,
-    grau: grauUniq,
-    grau_ord: grauOrd,
-    fe:   feOrdered.map(c => FE_LABELS[c] || c),
-    fsm:  fsmOrdered.map(c => FSM_LABELS[c] || c),
-    cnae: cnaeSet,
-    cnae_nome: cnaeSet, // sem nome separado no CSV
-  };
-
-  // helpers de índice
-  const idx = (arr, v) => arr.indexOf(v);
-
-  // ── 3. Montar cube (colunas paralelas) ───────────────────────────────
-  const cube = {
-    ocup: [], sexo: [], reg: [], uf: [], raca: [], grau: [],
-    fe: [], fsm: [], cnae: [],
-    qtd: [], massa: [], remv: []
-  };
-
-  for (const r of rows) {
-    const qtd  = parseInt(r.qtd_vinculos) || 0;
-    const remv = qtd; // qtd de vínculos como denominador
-    const massa = parseFloat(r.remuneracao_media) * qtd || 0;
-    // remv aqui = número de vínculos com remuneração declarada para média ponderada
-    // usamos qtd como peso e massa = rem_media * qtd
-
-    const feCode  = r.faixa_etaria;
-    const fsmCode = r.faixa_remuneracao_media_sm;
-    const feI     = feOrdered.indexOf(feCode);
-    const fsmI    = fsmOrdered.indexOf(fsmCode);
-
-    if (feI === -1 || fsmI === -1) continue; // código não mapeado
-
-    cube.ocup.push(idx(maps.ocup, r.ocupacao));
-    cube.sexo.push(idx(maps.sexo, r.sexo));
-    cube.reg.push(idx(maps.reg,  r.regiao));
-    cube.uf.push(idx(maps.uf,   r.sigla_uf));
-    cube.raca.push(idx(maps.raca, r.raca_cor));
-    cube.grau.push(idx(maps.grau, r.grau_instrucao));
-    cube.cnae.push(idx(maps.cnae, r.cnae_divisao));
-    cube.fe.push(feI);
-    cube.fsm.push(fsmI);
-    cube.qtd.push(qtd);
-    cube.massa.push(massa);   // soma remuneração total (para média ponderada)
-    cube.remv.push(remv);     // qtd vínculos (denominador da média)
-  }
-
-  // ── 4. Municípios (mun) ───────────────────────────────────────────────
-  const munUfSet  = uniq(rows.map(r => r.sigla_uf));
-  const munRegSet = uniq(rows.map(r => r.regiao));
-  const munOcSet  = uniq(rows.map(r => r.ocupacao));
-  const munSxSet  = uniq(rows.map(r => r.sexo));
-
-  const munmaps = { uf: munUfSet, reg: munRegSet, ocup: munOcSet, sexo: munSxSet };
-
-  const mun = { name: [], uf: [], reg: [], ocup: [], sexo: [], qtd: [], massa: [], remv: [] };
-
-  for (const r of rows) {
-    const qtd  = parseInt(r.qtd_vinculos) || 0;
-    const massa = parseFloat(r.remuneracao_media) * qtd || 0;
-    mun.name.push(r.municipio);
-    mun.uf.push(munUfSet.indexOf(r.sigla_uf));
-    mun.reg.push(munRegSet.indexOf(r.regiao));
-    mun.ocup.push(munOcSet.indexOf(r.ocupacao));
-    mun.sexo.push(munSxSet.indexOf(r.sexo));
-    mun.qtd.push(qtd);
-    mun.massa.push(massa);
-    mun.remv.push(qtd);
-  }
-
-  // ── 5. Meta ───────────────────────────────────────────────────────────
-  const totalVinculos = rows.reduce((s,r) => s + (parseInt(r.qtd_vinculos)||0), 0);
-  const ufs     = ufSet;
-  const regioes = regSet;
-  const munNames = [...new Set(rows.map(r => r.municipio))];
-
-  const meta = {
-    total: totalVinculos,
-    ufs,
-    regioes,
-    n_mun: munNames.length,
-  };
-
-  return { maps, cube, mun, munmaps, meta };
 }
-// ─────────────────────────────────────────────────────────────────────────────
 
-let DATA = null; // será preenchido após fetch
-
-const COL = {
-  canvas: "#0f1117",
-  surf: "#181b24",
-  surf2: "#1e2130",
-  border: "#2a2f42",
-  ink: "#e8eaf0",
-  ink2: "#8b90a7",
-  ink3: "#5a5f75",
-  blue: "#4f7cff",
-  blueDeep: "#2d57e8",
-  blueSoft: "#1a2340",
-  rose: "#ff5f7e",
-  amber: "#ffb347",
-  amberSoft: "#2a1f10",
-  fem: "#4f7cff",
-  masc: "#ffb347",
-  clay: "#ff5f7e",
-  track: "#232738",
-  teal: "#4f7cff",
-  tealDeep: "#2d57e8",
-  tealSoft: "#1a2340",
-};
-// SEXO, FEM, MASC são inicializados após o CSV ser carregado (ver initGlobals)
-let SEXO, FEM, MASC;
-const FILTER_KEYS = ["ocup", "sexo", "reg", "uf", "cnae", "fe", "fsm", "raca", "grau"];
-const KEY_LABEL = { ocup: "Ocupa\xE7\xE3o", sexo: "Sexo", reg: "Regi\xE3o", uf: "UF", cnae: "CNAE", fe: "Faixa et\xE1ria", fsm: "Faixa salarial", raca: "Ra\xE7a/cor", grau: "Escolaridade" };
-const NF = new Intl.NumberFormat("pt-BR");
-const fmt = (n) => NF.format(Math.round(n || 0));
-const brl = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
-const brl2 = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 2 });
-const pct = (a, b) => b ? 100 * a / b : 0;
-const pct1 = (a, b) => pct(a, b).toFixed(1).replace(".", ",");
-function labelFor(key, idx) {
-  switch (key) {
-    case "cnae": return DATA.maps.cnae[idx] + " \xB7 " + DATA.maps.cnae_nome[idx];
-    case "fe": return DATA.maps.fe[idx];
-    case "fsm": return DATA.maps.fsm[idx];
-    case "ocup": return DATA.maps.ocup[idx];
-    case "sexo": return DATA.maps.sexo[idx];
-    case "reg": return DATA.maps.reg[idx];
-    case "uf": return DATA.maps.uf[idx];
-    case "raca": return DATA.maps.raca[idx];
-    case "grau": return DATA.maps.grau[idx];
-    default: return String(idx);
-  }
+function fillSelect(id, values) {
+  const sel = document.getElementById(id);
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Todos</option>';
+  values.forEach(v => {
+    const o = document.createElement('option');
+    o.value = v; o.textContent = v;
+    sel.appendChild(o);
+  });
+  if (cur) sel.value = cur;
 }
-// C e N são acessados via DATA após carregamento
-const getC = () => DATA.cube;
-const getN = () => DATA.cube.qtd.length;
-function buildMask(filters, exclude) {
-  const C = getC(), N = getN();
-  const mask = new Uint8Array(N);
-  mask.fill(1);
-  for (const k of FILTER_KEYS) {
-    if (exclude && exclude.indexOf(k) !== -1) continue;
-    const arr = filters[k];
-    if (!arr || arr.length === 0) continue;
-    const set = new Set(arr);
-    const col = C[k];
-    for (let i = 0; i < N; i++) {
-      if (mask[i] && !set.has(col[i])) mask[i] = 0;
+
+function initFilters() {
+  fillSelect('f-ano',    uniq(rawData, 'ano'));
+  fillSelect('f-mes',    uniq(rawData, 'mes').map(m => m));
+  fillSelect('f-regiao', uniq(rawData, 'regiao'));
+  fillSelect('f-uf',     uniq(rawData, 'sigla_uf'));
+  fillSelect('f-mun',    uniq(rawData, 'municipio'));
+  fillSelect('f-sexo',   uniq(rawData, 'sexo'));
+  fillSelect('f-idade',  uniq(rawData, 'faixa_etaria'));
+  fillSelect('f-salario',uniq(rawData, 'faixa_remuneracao_media_sm'));
+  fillSelect('f-cnae',   uniq(rawData, 'cnae_divisao'));
+fillSelect('f-cbo',uniq(rawData,'ocupacao'));
+}
+
+function getFilters() {
+  return {
+    ano:    document.getElementById('f-ano').value,
+    mes:    document.getElementById('f-mes').value,
+    regiao: document.getElementById('f-regiao').value,
+    uf:     document.getElementById('f-uf').value,
+    mun:    document.getElementById('f-mun').value,
+    sexo:   document.getElementById('f-sexo').value,
+    idade:  document.getElementById('f-idade').value,
+    salario:document.getElementById('f-salario').value,
+    cnae:   document.getElementById('f-cnae').value,
+    cbo:    document.getElementById('f-cbo').value
+  };
+}
+
+function applyFilters() {
+  const f = getFilters();
+  filteredData = rawData.filter(r => {
+    if (f.ano    && String(r.ano)    !== f.ano)    return false;
+    if (f.mes    && String(r.mes)    !== f.mes)    return false;
+    if (f.regiao && r.regiao         !== f.regiao) return false;
+    if (f.uf     && r.sigla_uf       !== f.uf)     return false;
+    if (f.mun    && r.municipio      !== f.mun)    return false;
+    if (f.sexo   && r.sexo           !== f.sexo)   return false;
+    if (f.idade  && r.faixa_etaria   !== f.idade)  return false;
+    if (f.salario && r.faixa_remuneracao_media_sm !== f.salario) return false;
+    if (f.cnae   && String(r.cnae_divisao) !== f.cnae) return false;
+    if (f.cbo    && String(r.ocupacao) !== f.cbo) return false;
+    return true;
+  });
+  document.getElementById('filter-count').textContent =
+    filteredData.length.toLocaleString('pt-BR') + ' registros';
+  renderAll();
+}
+
+document.querySelectorAll('#filterbar select').forEach(s =>
+  s.addEventListener('change', applyFilters)
+);
+document.getElementById('btn-clear-filters').addEventListener('click', () => {
+  document.querySelectorAll('#filterbar select').forEach(s => s.value = '');
+  applyFilters();
+});
+
+// ════════════════════════════════════════════════
+//  AGGREGATION HELPERS
+// ════════════════════════════════════════════════
+function groupBy(data, col) {
+  const map = {};
+  data.forEach(r => {
+    const k = r[col] ?? '(vazio)';
+    if (!map[k]) map[k] = { vinculos: 0, remSum: 0, remCount: 0 };
+    map[k].vinculos  += (r.qtd_vinculos || 1);
+    map[k].remSum    += (r.remuneracao_media || 0) * (r.qtd_vinculos || 1);
+    map[k].remCount  += (r.qtd_vinculos || 1);
+  });
+  return map;
+}
+
+function sortedEntries(map, by = 'vinculos', limit = null) {
+  let entries = Object.entries(map)
+    .map(([k, v]) => ({
+      label: k,
+      vinculos: v.vinculos,
+      salMedio: v.remCount ? v.remSum / v.remCount : 0
+    }))
+    .sort((a, b) => b[by] - a[by]);
+  if (limit) entries = entries.slice(0, limit);
+  return entries;
+}
+
+// ════════════════════════════════════════════════
+//  CHART HELPERS
+// ════════════════════════════════════════════════
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+function mkBar(id, labels, datasets, opts = {}) {
+  destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  charts[id] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets },
+    options: deepMerge({
+      ...CHART_DEFAULTS,
+      scales: {
+        x: { ...axisStyle(), ticks: { ...axisStyle().ticks, maxRotation: 45, minRotation: 20 } },
+        y: { ...axisStyle() }
+      }
+    }, opts)
+  });
+}
+
+function mkHBar(id, labels, data, color = PALETTE[0], opts = {}) {
+  destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  charts[id] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ data, backgroundColor: color, borderRadius: 3 }] },
+    options: deepMerge({
+      ...CHART_DEFAULTS,
+      indexAxis: 'y',
+      plugins: { ...CHART_DEFAULTS.plugins, legend: { display: false } },
+      scales: {
+        x: { ...axisStyle() },
+        y: { ...axisStyle(), ticks: { ...axisStyle().ticks, font: { size: 10 } } }
+      }
+    }, opts)
+  });
+}
+
+function mkLine(id, labels, datasets, opts = {}) {
+  destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  charts[id] = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: deepMerge({
+      ...CHART_DEFAULTS,
+      scales: {
+        x: { ...axisStyle() },
+        y: { ...axisStyle() }
+      }
+    }, opts)
+  });
+}
+
+function mkDoughnut(id, labels, data, colors, opts = {}) {
+  destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  charts[id] = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#161b27' }] },
+    options: deepMerge({ ...CHART_DEFAULTS }, opts)
+  });
+}
+
+function mkPie(id, labels, data, colors) {
+  destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  charts[id] = new Chart(ctx, {
+    type: 'pie',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#161b27' }] },
+    options: { ...CHART_DEFAULTS }
+  });
+}
+
+function deepMerge(target, source) {
+  const out = Object.assign({}, target);
+  for (const key in source) {
+    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+      out[key] = deepMerge(target[key] || {}, source[key]);
+    } else {
+      out[key] = source[key];
     }
-  }
-  return mask;
-}
-function totals(mask) {
-  const C = getC(), N = getN();
-  let q = 0, ma = 0, rv = 0;
-  for (let i = 0; i < N; i++) {
-    if (!mask[i]) continue;
-    q += C.qtd[i]; ma += C.massa[i]; rv += C.remv[i];
-  }
-  return { q, ma, rv };
-}
-function aggDim(mask, dimKey) {
-  const C = getC(), N = getN();
-  const m = {};
-  const col = C[dimKey];
-  for (let i = 0; i < N; i++) {
-    if (!mask[i]) continue;
-    const v = col[i];
-    let o = m[v];
-    if (!o) { o = { q: 0, ma: 0, rv: 0 }; m[v] = o; }
-    o.q += C.qtd[i]; o.ma += C.massa[i]; o.rv += C.remv[i];
-  }
-  return m;
-}
-function itemsOrdered(mask, dimKey, len) {
-  const m = aggDim(mask, dimKey);
-  const out = [];
-  for (let i = 0; i < len; i++) {
-    const o = m[i] || { q: 0, ma: 0, rv: 0 };
-    out.push({ key: i, label: labelFor(dimKey, i), q: o.q, ma: o.ma, rv: o.rv, avg: o.rv ? o.ma / o.rv : 0 });
   }
   return out;
 }
-function argmax(items, valFn) {
-  let best = null, bv = -1;
-  for (const it of items) {
-    const v = valFn(it);
-    if (v > bv) { bv = v; best = it; }
-  }
-  return best;
-}
-const getM = () => DATA.mun;
-const getMN = () => DATA.mun.qtd.length;
-function remap(cubeCats, munCats) {
-  const idx = {};
-  munCats.forEach((c, i) => idx[c] = i);
-  return cubeCats.map((c) => idx[c]);
-}
-// Estas variáveis são inicializadas após o CSV ser carregado
-let RE_UF, RE_REG, RE_OC, RE_SX;
 
-function initGlobals() {
-  SEXO = DATA.maps.sexo;
-  FEM  = SEXO.indexOf("Feminino");
-  MASC = SEXO.indexOf("Masculino");
-  RE_UF = remap(DATA.maps.uf,   DATA.munmaps.uf);
-  RE_REG = remap(DATA.maps.reg,  DATA.munmaps.reg);
-  RE_OC  = remap(DATA.maps.ocup, DATA.munmaps.ocup);
-  RE_SX  = remap(DATA.maps.sexo, DATA.munmaps.sexo);
+// ════════════════════════════════════════════════
+//  RENDER ALL
+// ════════════════════════════════════════════════
+function renderAll() {
+  renderKPIs();
+  renderOverview();
+  renderPerfil();
+  renderGeo();
+  renderSalarios();
+  renderEvolucao();
+  renderCNAE();
+  renderEstrategia();
+  renderTable();
 }
-function munTop(filters, topN) {
-  const M = getM(), MN = getMN();
-  const mask = new Uint8Array(MN);
-  mask.fill(1);
-  const applyM = (fkey, mcol, remapArr) => {
-    const arr = filters[fkey];
-    if (!arr || !arr.length) return;
-    const set = new Set(arr.map((i) => remapArr[i]));
-    for (let i = 0; i < MN; i++) {
-      if (mask[i] && !set.has(mcol[i])) mask[i] = 0;
+
+// ── KPIs ──
+function renderKPIs() {
+  const d = filteredData;
+  const total = d.reduce((s, r) => s + (r.qtd_vinculos || 1), 0);
+  const muns  = new Set(d.map(r => r.id_municipio || r.municipio)).size;
+  const ufs   = new Set(d.map(r => r.sigla_uf)).size;
+
+  let remSum = 0, remCount = 0, maxRem = 0;
+  let femVinc = 0;
+  d.forEach(r => {
+    const v = r.qtd_vinculos || 1;
+    const sal = r.remuneracao_media || 0;
+    remSum   += sal * v;
+    remCount += v;
+    if (sal > maxRem) maxRem = sal;
+    const sx = String(r.sexo || '').toUpperCase();
+    if (sx === 'F' || sx === 'FEMININO' || sx === '2') femVinc += v;
+  });
+  const media = remCount ? remSum / remCount : 0;
+  const femPct = total ? (femVinc / total * 100) : 0;
+
+  const fmt = n => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  const fmtN = n => n.toLocaleString('pt-BR');
+
+  document.getElementById('kpi-vinculos').textContent = fmtN(total);
+  document.getElementById('kpi-mun').textContent      = fmtN(muns);
+  document.getElementById('kpi-uf').textContent       = fmtN(ufs);
+  document.getElementById('kpi-media').textContent    = fmt(media);
+  document.getElementById('kpi-max').textContent      = fmt(maxRem);
+  document.getElementById('kpi-fem').textContent      = femPct.toFixed(1) + '%';
+}
+
+// ── VISÃO GERAL ──
+function renderOverview() {
+  const d = filteredData;
+
+  // Gênero (doughnut)
+  const gMap = groupBy(d, 'sexo');
+  const gEntries = sortedEntries(gMap, 'vinculos');
+  mkDoughnut('ch-genero',
+    gEntries.map(e => e.label),
+    gEntries.map(e => e.vinculos),
+    PALETTE
+  );
+
+  // Regiões (pie)
+  const rMap = groupBy(d, 'regiao');
+  const rEntries = sortedEntries(rMap, 'vinculos');
+  mkPie('ch-regiao-geral',
+    rEntries.map(e => e.label),
+    rEntries.map(e => e.vinculos),
+    PALETTE
+  );
+
+  // Top 10 UF
+  const ufEntries = sortedEntries(groupBy(d, 'sigla_uf'), 'vinculos', 10);
+  mkHBar('ch-estados',
+    ufEntries.map(e => e.label),
+    ufEntries.map(e => e.vinculos),
+    PALETTE[0]
+  );
+
+  // Top 10 Municípios
+  const munEntries = sortedEntries(groupBy(d, 'municipio'), 'vinculos', 10);
+  mkHBar('ch-municipios',
+    munEntries.map(e => e.label),
+    munEntries.map(e => e.vinculos),
+    PALETTE[1]
+  );
+}
+
+// ── PERFIL ──
+function renderPerfil() {
+  const d = filteredData;
+
+  // Faixa etária
+  const feEntries = sortedEntries(groupBy(d, 'faixa_etaria'), 'vinculos');
+  mkBar('ch-faixa-etaria',
+    feEntries.map(e => e.label),
+    [{ label: 'Vínculos', data: feEntries.map(e => e.vinculos), backgroundColor: PALETTE[0], borderRadius: 4 }]
+  );
+
+  // Grau de instrução
+  const instEntries = sortedEntries(groupBy(d, 'grau_instrucao'), 'vinculos');
+  mkBar('ch-instrucao',
+    instEntries.map(e => e.label),
+    [{ label: 'Vínculos', data: instEntries.map(e => e.vinculos), backgroundColor: PALETTE[2], borderRadius: 4 }]
+  );
+
+  // Raça / cor
+  const rcEntries = sortedEntries(groupBy(d, 'raca_cor'), 'vinculos');
+  mkDoughnut('ch-raca',
+    rcEntries.map(e => e.label),
+    rcEntries.map(e => e.vinculos),
+    PALETTE
+  );
+
+  // Salário médio por gênero
+  const sgEntries = sortedEntries(groupBy(d, 'sexo'), 'vinculos');
+  mkBar('ch-sal-genero',
+    sgEntries.map(e => e.label),
+    [{ label: 'Salário Médio', data: sgEntries.map(e => e.salMedio), backgroundColor: PALETTE[4], borderRadius: 4 }],
+    {
+      plugins: {
+        ...CHART_DEFAULTS.plugins,
+        tooltip: {
+          ...CHART_DEFAULTS.plugins.tooltip,
+          callbacks: { label: ctx => ' R$ ' + ctx.parsed.y.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) }
+        }
+      }
     }
-  };
-  applyM("uf", M.uf, RE_UF);
-  applyM("reg", M.reg, RE_REG);
-  applyM("ocup", M.ocup, RE_OC);
-  applyM("sexo", M.sexo, RE_SX);
-  const acc = {};
-  for (let i = 0; i < MN; i++) {
-    if (!mask[i]) continue;
-    const nm = M.name[i] + "||" + DATA.munmaps.uf[M.uf[i]];
-    let o = acc[nm];
-    if (!o) { o = { name: M.name[i], uf: DATA.munmaps.uf[M.uf[i]], q: 0, ma: 0, rv: 0 }; acc[nm] = o; }
-    o.q += M.qtd[i]; o.ma += M.massa[i]; o.rv += M.remv[i];
-  }
-  const list = Object.values(acc).sort((a, b) => b.q - a.q).slice(0, topN);
-  list.forEach((o) => o.avg = o.rv ? o.ma / o.rv : 0);
-  return list;
-}
-function computeAll(filters) {
-  const maskAll = buildMask(filters, null);
-  const tot = totals(maskAll);
-  const ocup = itemsOrdered(buildMask(filters, ["ocup"]), "ocup", DATA.maps.ocup.length);
-  const sexo = itemsOrdered(buildMask(filters, ["sexo"]), "sexo", DATA.maps.sexo.length);
-  const fe = itemsOrdered(buildMask(filters, ["fe"]), "fe", DATA.maps.fe.length);
-  const fsm = itemsOrdered(buildMask(filters, ["fsm"]), "fsm", DATA.maps.fsm.length);
-  const cnae = itemsOrdered(buildMask(filters, ["cnae"]), "cnae", DATA.maps.cnae.length);
-  const uf = itemsOrdered(buildMask(filters, ["uf"]), "uf", DATA.maps.uf.length);
-  const reg = itemsOrdered(buildMask(filters, ["reg"]), "reg", DATA.maps.reg.length);
-  const raca = itemsOrdered(buildMask(filters, ["raca"]), "raca", DATA.maps.raca.length);
-  const grau = itemsOrdered(buildMask(filters, ["grau"]), "grau", DATA.maps.grau.length);
-  const aSexo = itemsOrdered(maskAll, "sexo", DATA.maps.sexo.length);
-  const aOcup = itemsOrdered(maskAll, "ocup", DATA.maps.ocup.length);
-  const aFe = itemsOrdered(maskAll, "fe", DATA.maps.fe.length);
-  const aFsm = itemsOrdered(maskAll, "fsm", DATA.maps.fsm.length);
-  const aRaca = itemsOrdered(maskAll, "raca", DATA.maps.raca.length);
-  const aGrau = itemsOrdered(maskAll, "grau", DATA.maps.grau.length);
-  const fsmReal = aFsm.filter((it) => it.label !== "N/C");
-  const perfil = {
-    ocup: argmax(aOcup, (it) => it.q),
-    sexo: argmax(aSexo, (it) => it.q),
-    fe: argmax(aFe, (it) => it.q),
-    fsm: argmax(fsmReal.length ? fsmReal : aFsm, (it) => it.q),
-    raca: argmax(aRaca, (it) => it.q),
-    grau: argmax(aGrau, (it) => it.q),
-    avg: tot.rv ? tot.ma / tot.rv : 0,
-    total: tot.q
-  };
-  const gF = aSexo[FEM] || { q: 0, ma: 0, rv: 0 };
-  const gM = aSexo[MASC] || { q: 0, ma: 0, rv: 0 };
-  const avgF = gF.rv ? gF.ma / gF.rv : 0;
-  const avgM = gM.rv ? gM.ma / gM.rv : 0;
-  const gapPct = avgF ? (avgM - avgF) / avgF * 100 : 0;
-  const femPct = pct(gF.q, gF.q + gM.q);
-  const dbMask = buildMask(filters, ["fe", "sexo"]);
-  const dbAcc = {};
-  const _C = getC(), _N = getN();
-  for (let i = 0; i < _N; i++) {
-    if (!dbMask[i]) continue;
-    const f = _C.fe[i], s = _C.sexo[i];
-    let o = dbAcc[f];
-    if (!o) { o = {}; dbAcc[f] = o; }
-    let p = o[s];
-    if (!p) { p = { ma: 0, rv: 0 }; o[s] = p; }
-    p.ma += _C.massa[i]; p.rv += _C.remv[i];
-  }
-  const dumbbell = [];
-  for (let i = 0; i < DATA.maps.fe.length; i++) {
-    const o = dbAcc[i] || {};
-    const pf = o[FEM] || { ma: 0, rv: 0 }, pm = o[MASC] || { ma: 0, rv: 0 };
-    dumbbell.push({ label: DATA.maps.fe[i], f: pf.rv ? pf.ma / pf.rv : 0, m: pm.rv ? pm.ma / pm.rv : 0 });
-  }
-  const rgMask = buildMask(filters, ["reg", "sexo"]);
-  const rgAcc = {};
-  for (let i = 0; i < _N; i++) {
-    if (!rgMask[i]) continue;
-    const r = _C.reg[i], s = _C.sexo[i];
-    let o = rgAcc[r];
-    if (!o) { o = {}; rgAcc[r] = o; }
-    let p = o[s];
-    if (!p) { p = { ma: 0, rv: 0 }; o[s] = p; }
-    p.ma += _C.massa[i]; p.rv += _C.remv[i];
-  }
-  const regGender = [];
-  for (let i = 0; i < DATA.maps.reg.length; i++) {
-    const o = rgAcc[i] || {};
-    const pf = o[FEM] || { ma: 0, rv: 0 }, pm = o[MASC] || { ma: 0, rv: 0 };
-    regGender.push({ reg: DATA.maps.reg[i], f: pf.rv ? pf.ma / pf.rv : 0, m: pm.rv ? pm.ma / pm.rv : 0 });
-  }
-  const maxSal = Math.max(1, ...dumbbell.flatMap((d) => [d.f, d.m]), ...regGender.flatMap((r) => [r.f, r.m]));
-  const munActive = ["fe", "fsm", "cnae", "raca", "grau"].some((k) => filters[k] && filters[k].length);
-  const mun = munTop(filters, 12);
-  return { tot, ocup, sexo, fe, fsm, cnae, uf, reg, raca, grau, perfil, avgF, avgM, gapPct, femPct, gF, gM, dumbbell, regGender, maxSal, mun, munActive };
+  );
 }
 
-function Pill({ children }) {
-  return React.createElement("span", { className: "pill" }, children);
+// ── GEOGRAFIA ──
+function renderGeo() {
+  const d = filteredData;
+
+  // Regiões (doughnut)
+  const rEntries = sortedEntries(groupBy(d, 'regiao'), 'vinculos');
+  mkDoughnut('ch-regiao-geo',
+    rEntries.map(e => e.label),
+    rEntries.map(e => e.vinculos),
+    PALETTE
+  );
+
+  // Rank UF top 15
+  const ufE = sortedEntries(groupBy(d, 'sigla_uf'), 'vinculos', 15);
+  mkHBar('ch-rank-uf',
+    ufE.map(e => e.label),
+    ufE.map(e => e.vinculos),
+    PALETTE[0]
+  );
+
+  // Salário por região
+  const srE = sortedEntries(groupBy(d, 'regiao'), 'vinculos');
+  mkBar('ch-sal-regiao',
+    srE.map(e => e.label),
+    [{ label: 'Salário Médio', data: srE.map(e => e.salMedio), backgroundColor: PALETTE[3], borderRadius: 4 }],
+    {
+      plugins: {
+        ...CHART_DEFAULTS.plugins,
+        tooltip: {
+          ...CHART_DEFAULTS.plugins.tooltip,
+          callbacks: { label: ctx => ' R$ ' + ctx.parsed.y.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) }
+        }
+      }
+    }
+  );
+
+  // Horizontal bars municípios
+  const munE = sortedEntries(groupBy(d, 'municipio'), 'vinculos', 20);
+  const maxV = munE[0]?.vinculos || 1;
+  const container = document.getElementById('hbar-mun');
+  container.innerHTML = munE.map(e => `
+    <div class="hbar-row">
+      <div class="hbar-label">${e.label}</div>
+      <div class="hbar-track"><div class="hbar-fill" style="width:${(e.vinculos/maxV*100).toFixed(1)}%"></div></div>
+      <div class="hbar-val">${e.vinculos.toLocaleString('pt-BR')}</div>
+    </div>
+  `).join('');
 }
-function Card({ title, sub, note, children, className }) {
-  return React.createElement("div", { className: "card" + (className ? " " + className : "") },
-    (title || note) && React.createElement("div", { className: "card-h" },
-      React.createElement("div", { className: "card-ht" },
-        title && React.createElement("div", { className: "card-title" }, title),
-        sub && React.createElement("div", { className: "card-sub" }, sub)
-      ),
-      note && React.createElement("div", { className: "card-note" }, note)
-    ),
-    children
+
+// ── SALÁRIOS ──
+function renderSalarios() {
+  const d = filteredData;
+  const fmtSal = ctx => ' R$ ' + ctx.parsed.y.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+
+  // Faixa salarial (vínculos)
+  const fsEntries = sortedEntries(groupBy(d, 'faixa_remuneracao_media_sm'), 'vinculos');
+  mkBar('ch-faixa-sal',
+    fsEntries.map(e => e.label),
+    [{ label: 'Vínculos', data: fsEntries.map(e => e.vinculos), backgroundColor: PALETTE[5], borderRadius: 4 }]
+  );
+
+  // Salário médio por faixa etária
+  const feE = sortedEntries(groupBy(d, 'faixa_etaria'), 'vinculos');
+  mkBar('ch-sal-idade',
+    feE.map(e => e.label),
+    [{ label: 'Salário Médio', data: feE.map(e => e.salMedio), backgroundColor: PALETTE[1], borderRadius: 4 }],
+    { plugins: { ...CHART_DEFAULTS.plugins, tooltip: { ...CHART_DEFAULTS.plugins.tooltip, callbacks: { label: fmtSal } } } }
+  );
+
+  // Salário × instrução
+  const instE = sortedEntries(groupBy(d, 'grau_instrucao'), 'vinculos');
+  mkBar('ch-sal-instrucao',
+    instE.map(e => e.label),
+    [{ label: 'Salário Médio', data: instE.map(e => e.salMedio), backgroundColor: PALETTE[2], borderRadius: 4 }],
+    { plugins: { ...CHART_DEFAULTS.plugins, tooltip: { ...CHART_DEFAULTS.plugins.tooltip, callbacks: { label: fmtSal } } } }
+  );
+
+  // Salário × raça/cor
+  const rcE = sortedEntries(groupBy(d, 'raca_cor'), 'vinculos');
+  mkBar('ch-sal-raca',
+    rcE.map(e => e.label),
+    [{ label: 'Salário Médio', data: rcE.map(e => e.salMedio), backgroundColor: PALETTE[3], borderRadius: 4 }],
+    { plugins: { ...CHART_DEFAULTS.plugins, tooltip: { ...CHART_DEFAULTS.plugins.tooltip, callbacks: { label: fmtSal } } } }
   );
 }
-function HBars({ items, color, onPick, activeSet, valKind, max }) {
-  const mx = max != null ? max : Math.max(1, ...items.map((i) => i.value));
-  const anyActive = activeSet && activeSet.size > 0;
-  return React.createElement("div", { className: "bars" }, items.map((it) => {
-    const on = activeSet && activeSet.has(it.key);
-    const dim = anyActive && !on;
-    const w = Math.max(0, 100 * it.value / mx);
-    const valTxt = valKind === "brl" ? brl(it.value) : fmt(it.value);
-    const Comp = onPick ? "button" : "div";
-    return React.createElement(Comp, {
-      key: it.key,
-      className: "bar-row" + (onPick ? " clickable" : "") + (on ? " on" : ""),
-      onClick: onPick ? () => onPick(it.key) : void 0,
-      style: { opacity: dim ? 0.3 : 1 },
-      title: it.label
-    },
-      React.createElement("span", { className: "bar-label" }, it.label),
-      React.createElement("span", { className: "bar-track" },
-        React.createElement("span", { className: "bar-fill", style: { width: w + "%", background: on ? COL.blueDeep : color } })
-      ),
-      React.createElement("span", { className: "bar-val" }, valTxt)
+
+// ── EVOLUÇÃO ──
+function renderEvolucao() {
+  const d = filteredData;
+
+  // build monthly map
+  const monthMap = {};
+  d.forEach(r => {
+    if (!r.ano || !r.mes) return;
+    const key = `${r.ano}-${String(r.mes).padStart(2,'0')}`;
+    if (!monthMap[key]) monthMap[key] = { vinculos: 0, remSum: 0, remCount: 0 };
+    const v = r.qtd_vinculos || 1;
+    monthMap[key].vinculos  += v;
+    monthMap[key].remSum    += (r.remuneracao_media || 0) * v;
+    monthMap[key].remCount  += v;
+  });
+
+  const keys = Object.keys(monthMap).sort();
+  const labels = keys.map(k => {
+    const [y, m] = k.split('-');
+    return MONTH_NAMES[parseInt(m) - 1] + '/' + y.slice(2);
+  });
+  const vinculos = keys.map(k => monthMap[k].vinculos);
+  const salarios = keys.map(k => monthMap[k].remCount ? monthMap[k].remSum / monthMap[k].remCount : 0);
+
+  mkLine('ch-evolucao-vinculos', labels, [{
+    label: 'Vínculos',
+    data: vinculos,
+    borderColor: PALETTE[1],
+    backgroundColor: 'rgba(34,211,238,.1)',
+    fill: true,
+    tension: .3,
+    pointRadius: 3
+  }]);
+
+  mkLine('ch-evolucao-salario', labels, [{
+    label: 'Remuneração Média',
+    data: salarios,
+    borderColor: PALETTE[3],
+    backgroundColor: 'rgba(52,211,153,.1)',
+    fill: true,
+    tension: .3,
+    pointRadius: 3
+  }], {
+    plugins: {
+      ...CHART_DEFAULTS.plugins,
+      tooltip: {
+        ...CHART_DEFAULTS.plugins.tooltip,
+        callbacks: { label: ctx => ' R$ ' + ctx.parsed.y.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) }
+      }
+    }
+  });
+}
+
+// ── CNAE ──
+function renderCNAE() {
+  const d = filteredData;
+
+  const cnaeE = sortedEntries(groupBy(d, 'cnae_divisao'), 'vinculos', 10);
+  mkHBar('ch-cnae-vinculos',
+    cnaeE.map(e => String(e.label)),
+    cnaeE.map(e => e.vinculos),
+    cnaeE.map((_, i) => PALETTE[i % PALETTE.length])
+  );
+
+  const cnaeSalE = sortedEntries(groupBy(d, 'cnae_divisao'), 'salMedio', 10);
+  mkHBar('ch-cnae-salario',
+    cnaeSalE.map(e => String(e.label)),
+    cnaeSalE.map(e => e.salMedio),
+    cnaeSalE.map((_, i) => PALETTE[i % PALETTE.length]),
+    {
+      plugins: {
+        ...CHART_DEFAULTS.plugins,
+        legend: { display: false },
+        tooltip: {
+          ...CHART_DEFAULTS.plugins.tooltip,
+          callbacks: { label: ctx => ' R$ ' + ctx.parsed.x.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) }
+        }
+      }
+    }
+  );
+}
+
+// ════════════════════════════════════════════════
+//  TABLE
+// ════════════════════════════════════════════════
+const TBL_COLS = ['sigla_uf','municipio','regiao','sexo','faixa_etaria','remuneracao_media','cnae_divisao','qtd_vinculos'];
+
+function getTableData() {
+  let data = [...filteredData];
+
+  // search
+  if (tblSearch) {
+    const q = tblSearch.toLowerCase();
+    data = data.filter(r =>
+      TBL_COLS.some(c => String(r[c] ?? '').toLowerCase().includes(q))
     );
-  }));
-}
-function Donut({ fFrac, size = 148, stroke = 22 }) {
-  const r = (size - stroke) / 2, cx = size / 2, cy = size / 2, circ = 2 * Math.PI * r;
-  const lenF = circ * fFrac;
-  return React.createElement("svg", { width: size, height: size, viewBox: `0 0 ${size} ${size}` },
-    React.createElement("circle", { cx, cy, r, fill: "none", stroke: COL.amberSoft, strokeWidth: stroke }),
-    React.createElement("circle", { cx, cy, r, fill: "none", stroke: COL.masc, strokeWidth: stroke,
-      strokeDasharray: `${circ - lenF} ${lenF}`, strokeDashoffset: lenF,
-      transform: `rotate(-90 ${cx} ${cy})` }),
-    React.createElement("circle", { cx, cy, r, fill: "none", stroke: COL.fem, strokeWidth: stroke,
-      strokeDasharray: `${lenF} ${circ - lenF}`, strokeDashoffset: 0,
-      transform: `rotate(-90 ${cx} ${cy})` })
-  );
-}
-function Dumbbell({ rows, max }) {
-  return React.createElement("div", { className: "db" },
-    rows.map((r) => {
-      const lf = 100 * r.f / max, lm = 100 * r.m / max;
-      const lo = Math.min(lf, lm), hi = Math.max(lf, lm);
-      const gap = r.f && r.m ? (r.m - r.f) / r.f * 100 : null;
-      return React.createElement("div", { className: "db-row", key: r.label },
-        React.createElement("span", { className: "db-label" }, r.label),
-        React.createElement("span", { className: "db-track" },
-          React.createElement("span", { className: "db-axis" }),
-          r.f > 0 && r.m > 0 && React.createElement("span", { className: "db-conn", style: { left: lo + "%", width: hi - lo + "%" } }),
-          r.f > 0 && React.createElement("span", { className: "db-dot", style: { left: lf + "%", background: COL.fem }, title: "Feminino " + brl(r.f) }),
-          r.m > 0 && React.createElement("span", { className: "db-dot", style: { left: lm + "%", background: COL.masc }, title: "Masculino " + brl(r.m) })
-        ),
-        React.createElement("span", { className: "db-gap", style: { color: gap == null ? COL.ink3 : gap >= 0 ? COL.masc : COL.clay } },
-          gap == null ? "\u2014" : (gap >= 0 ? "+" : "\u2212") + Math.abs(gap).toFixed(0) + "%"
-        )
-      );
-    }),
-    React.createElement("div", { className: "db-scale" },
-      React.createElement("span", null, "R$ 0"),
-      React.createElement("span", null, brl(max))
-    )
-  );
-}
-function Seg({ label, value, options, onChange }) {
-  return React.createElement("div", { className: "segwrap" },
-    React.createElement("span", { className: "seg-l" }, label),
-    React.createElement("div", { className: "seg" },
-      React.createElement("button", { className: "seg-b" + (value == null ? " on" : ""), onClick: () => onChange(null) }, "Todos"),
-      options.map((o) => React.createElement("button", { key: o.v, className: "seg-b" + (value === o.v ? " on" : ""), onClick: () => onChange(o.v) }, o.t))
-    )
-  );
-}
-function Dashboard() {
-  const [filters, setFilters] = useState({ ocup: [], sexo: [], reg: [], uf: [], cnae: [], fe: [], fsm: [], raca: [], grau: [] });
-  const [showCov, setShowCov] = useState(true);
-  const sig = JSON.stringify(filters);
-  const D = useMemo(() => computeAll(filters), [sig]);
-  function toggle(key, val) {
-    setFilters((prev) => {
-      const cur = prev[key] || [];
-      const has = cur.indexOf(val) !== -1;
-      return { ...prev, [key]: has ? cur.filter((v) => v !== val) : [...cur, val] };
+  }
+
+  // sort
+  if (tblSort.col) {
+    data.sort((a, b) => {
+      const va = a[tblSort.col] ?? '';
+      const vb = b[tblSort.col] ?? '';
+      if (typeof va === 'number') return (va - vb) * tblSort.dir;
+      return String(va).localeCompare(String(vb)) * tblSort.dir;
     });
   }
-  function setSingle(key, val) {
-    setFilters((prev) => ({ ...prev, [key]: val == null ? [] : [val] }));
-  }
-  function clearAll() {
-    setFilters({ ocup: [], sexo: [], reg: [], uf: [], cnae: [], fe: [], fsm: [], raca: [], grau: [] });
-  }
-  const single = (key) => filters[key] && filters[key].length === 1 ? filters[key][0] : null;
-  const activeChips = [];
-  for (const k of FILTER_KEYS) {
-    (filters[k] || []).forEach((v) => activeChips.push({ k, v, label: labelFor(k, v) }));
-  }
-  const setOf = (key) => new Set(filters[key] || []);
-  const empty = D.tot.q === 0;
-  const enfIdx = DATA.maps.ocup.indexOf("Enfermeiro");
-  const enfQ = (D.ocup.find((i) => i.key === enfIdx) || { q: 0 }).q;
-  const avgSal = D.tot.rv ? D.tot.ma / D.tot.rv : 0;
-  const domFe = argmax(D.fe, (it) => it.q);
-  const ufScope = DATA.meta.ufs.join(" \xB7 ");
-  const cnaeTop = [...D.cnae].sort((a, b) => b.q - a.q).slice(0, 10);
-  const ufSorted = [...D.uf].sort((a, b) => b.q - a.q);
-  const racaSorted = [...D.raca].sort((a, b) => b.q - a.q);
-  const grauSorted = [...D.grau].sort((a, b) => DATA.maps.grau_ord[a.key] - DATA.maps.grau_ord[b.key]);
-  const fsmItems = D.fsm;
-  const feItems = D.fe;
-
-  return React.createElement("div", { className: "nrx" },
-    React.createElement("style", null, CSS),
-
-    // HEADER
-    React.createElement("header", { className: "hd" },
-      React.createElement("div", { className: "hd-left" },
-        React.createElement("div", { className: "hd-icon" },
-          React.createElement("svg", { viewBox: "0 0 24 24", width: "20", height: "20", fill: "none" },
-            React.createElement("path", { d: "M12 3v18M3 12h18", stroke: COL.blue, strokeWidth: "2.2", strokeLinecap: "round" }),
-            React.createElement("rect", { x: "8", y: "8", width: "8", height: "8", rx: "1", stroke: COL.blue, strokeWidth: "1.4", opacity: "0.5" })
-          )
-        ),
-        React.createElement("div", null,
-          React.createElement("h1", null, "Enfermagem Formal ", React.createElement("span", null, "/ RAIS")),
-          React.createElement("p", { className: "hd-sub" }, "Análise de vínculos celetistas · competência 01/2024")
-        )
-      ),
-      React.createElement("div", { className: "hd-badges" },
-        React.createElement("span", { className: "badge" }, React.createElement("b", null, fmt(DATA.meta.total)), " vínculos"),
-        React.createElement("span", { className: "badge" }, "Jan ", React.createElement("b", null, "2024")),
-        React.createElement("span", { className: "badge" }, React.createElement("b", null, DATA.meta.ufs.length), " UFs · ", React.createElement("b", null, fmt(DATA.meta.n_mun)), " municípios")
-      )
-    ),
-
-    // COBERTURA
-    React.createElement("div", { className: "cov" + (showCov ? "" : " min") },
-      React.createElement("div", { className: "cov-h", onClick: () => setShowCov((s) => !s) },
-        React.createElement("span", { className: "cov-tag" }, "⚠ Cobertura do extrato"),
-        React.createElement("span", { className: "cov-toggle" }, showCov ? "fechar" : "ver detalhes")
-      ),
-      showCov && React.createElement("div", { className: "cov-body" },
-        React.createElement("p", null, React.createElement("b", null, "Período:"), " somente a competência ", React.createElement("b", null, "Janeiro/2024"), ". Para série temporal, reextraia a RAIS com mais competências — o painel renderiza automaticamente."),
-        React.createElement("p", null, React.createElement("b", null, "Abrangência:"), " UFs ", React.createElement("b", null, ufScope), " (regiões ", DATA.meta.regioes.join(" e "), ") — não representa o Brasil inteiro."),
-        React.createElement("p", null, React.createElement("b", null, "Salário:"), " média ponderada por vínculos. Vínculos sem remuneração declarada (faixa ", React.createElement("b", null, "N/C"), ") são excluídos do cálculo.")
-      )
-    ),
-
-    // FILTROS
-    React.createElement("div", { className: "fbar" },
-      React.createElement(Seg, { label: "Ocupação", value: single("ocup"), onChange: (v) => setSingle("ocup", v),
-        options: DATA.maps.ocup.map((t, i) => ({ v: i, t: t === "Técnico/Auxiliar de Enfermagem" ? "Téc./Aux." : t })) }),
-      React.createElement(Seg, { label: "Sexo", value: single("sexo"), onChange: (v) => setSingle("sexo", v),
-        options: DATA.maps.sexo.map((t, i) => ({ v: i, t })) }),
-      React.createElement(Seg, { label: "Região", value: single("reg"), onChange: (v) => setSingle("reg", v),
-        options: DATA.maps.reg.map((t, i) => ({ v: i, t })) }),
-      React.createElement("div", { className: "segwrap" },
-        React.createElement("span", { className: "seg-l" }, "UF"),
-        React.createElement("div", { className: "chips" },
-          DATA.maps.uf.map((u, i) =>
-            React.createElement("button", { key: u, className: "chip" + ((filters.uf || []).indexOf(i) !== -1 ? " on" : ""), onClick: () => toggle("uf", i) }, u)
-          )
-        )
-      )
-    ),
-
-    activeChips.length > 0 && React.createElement("div", { className: "active" },
-      React.createElement("span", { className: "active-l" }, "Filtros ativos"),
-      activeChips.map((c, idx) =>
-        React.createElement("button", { key: idx, className: "achip", onClick: () => toggle(c.k, c.v) },
-          React.createElement("span", { className: "achip-k" }, KEY_LABEL[c.k]),
-          c.label,
-          React.createElement("span", { className: "achip-x" }, "\xD7")
-        )
-      ),
-      React.createElement("button", { className: "achip clearbtn", onClick: clearAll }, "Limpar tudo")
-    ),
-
-    empty ? React.createElement("div", { className: "emptybox" },
-      React.createElement("div", { className: "empty-big" }, "Nenhum vínculo encontrado"),
-      React.createElement("p", null, "A combinação de filtros não retorna registros. Ajuste ou remova algum filtro."),
-      React.createElement("button", { className: "achip clearbtn", onClick: clearAll }, "Limpar todos os filtros")
-    ) : React.createElement(React.Fragment, null,
-
-      // KPIs
-      React.createElement("div", { className: "kpis" },
-        React.createElement("div", { className: "kpi" },
-          React.createElement("div", { className: "kpi-label" }, "Vínculos totais"),
-          React.createElement("div", { className: "kpi-v" }, fmt(D.tot.q)),
-          React.createElement("div", { className: "kpi-s" }, DATA.meta.ufs.length, " UFs · jan/2024")
-        ),
-        React.createElement("div", { className: "kpi" },
-          React.createElement("div", { className: "kpi-label" }, "Enfermeiros"),
-          React.createElement("div", { className: "kpi-v" }, pct1(enfQ, D.tot.q), "%"),
-          React.createElement("div", { className: "kpi-s" }, pct1(D.tot.q - enfQ, D.tot.q), "% téc./auxiliares")
-        ),
-        React.createElement("div", { className: "kpi" },
-          React.createElement("div", { className: "kpi-label" }, "Força feminina"),
-          React.createElement("div", { className: "kpi-v", style: { color: COL.blue } }, D.femPct.toFixed(1).replace(".", ","), "%"),
-          React.createElement("div", { className: "kpi-s" }, (100 - D.femPct).toFixed(1).replace(".", ","), "% masculina")
-        ),
-        React.createElement("div", { className: "kpi" },
-          React.createElement("div", { className: "kpi-label" }, "Salário médio"),
-          React.createElement("div", { className: "kpi-v" }, brl(avgSal)),
-          React.createElement("div", { className: "kpi-s" }, "média ponderada")
-        ),
-        React.createElement("div", { className: "kpi" },
-          React.createElement("div", { className: "kpi-label" }, "Faixa etária modal"),
-          React.createElement("div", { className: "kpi-v sm" }, domFe ? domFe.label : "\u2014"),
-          React.createElement("div", { className: "kpi-s" }, domFe ? pct1(domFe.q, D.tot.q) + "% dos vínculos" : "")
-        )
-      ),
-
-      // PERFIL + GÊNERO
-      React.createElement("div", { className: "grid g-perfil" },
-        React.createElement("div", { className: "card perfil" },
-          React.createElement("div", { className: "perfil-h" },
-            React.createElement("div", { className: "card-title" }, "Perfil predominante"),
-            React.createElement("span", { className: "perfil-tag" }, "síntese do recorte atual")
-          ),
-          React.createElement("div", { className: "perfil-grid" },
-            React.createElement("div", { className: "pf" }, React.createElement("span", { className: "pf-k" }, "Ocupação"), React.createElement("span", { className: "pf-v" }, D.perfil.ocup ? D.perfil.ocup.label : "\u2014"), React.createElement("span", { className: "pf-s" }, D.perfil.ocup ? pct1(D.perfil.ocup.q, D.tot.q) + "%" : "")),
-            React.createElement("div", { className: "pf" }, React.createElement("span", { className: "pf-k" }, "Sexo"), React.createElement("span", { className: "pf-v" }, D.perfil.sexo ? D.perfil.sexo.label : "\u2014"), React.createElement("span", { className: "pf-s" }, D.perfil.sexo ? pct1(D.perfil.sexo.q, D.tot.q) + "%" : "")),
-            React.createElement("div", { className: "pf" }, React.createElement("span", { className: "pf-k" }, "Faixa etária"), React.createElement("span", { className: "pf-v" }, D.perfil.fe ? D.perfil.fe.label + " anos" : "\u2014"), React.createElement("span", { className: "pf-s" }, D.perfil.fe ? pct1(D.perfil.fe.q, D.tot.q) + "%" : "")),
-            React.createElement("div", { className: "pf" }, React.createElement("span", { className: "pf-k" }, "Faixa salarial"), React.createElement("span", { className: "pf-v" }, D.perfil.fsm ? D.perfil.fsm.label + " SM" : "\u2014"), React.createElement("span", { className: "pf-s" }, D.perfil.fsm ? pct1(D.perfil.fsm.q, D.tot.q) + "%" : "")),
-            React.createElement("div", { className: "pf" }, React.createElement("span", { className: "pf-k" }, "Raça/cor"), React.createElement("span", { className: "pf-v" }, D.perfil.raca ? D.perfil.raca.label : "\u2014"), React.createElement("span", { className: "pf-s" }, D.perfil.raca ? pct1(D.perfil.raca.q, D.tot.q) + "%" : "")),
-            React.createElement("div", { className: "pf" }, React.createElement("span", { className: "pf-k" }, "Escolaridade"), React.createElement("span", { className: "pf-v sm" }, D.perfil.grau ? D.perfil.grau.label : "\u2014"), React.createElement("span", { className: "pf-s" }, D.perfil.grau ? pct1(D.perfil.grau.q, D.tot.q) + "%" : ""))
-          ),
-          React.createElement("div", { className: "perfil-foot" }, "Salário médio: ", React.createElement("b", null, brl2(D.perfil.avg)), " · ", fmt(D.perfil.total), " vínculos")
-        ),
-        React.createElement(Card, { title: "Distribuição por gênero", sub: "clique para filtrar" },
-          React.createElement("div", { className: "gen" },
-            React.createElement("div", { className: "donut-wrap" },
-              React.createElement(Donut, { fFrac: D.gF.q / Math.max(1, D.gF.q + D.gM.q) }),
-              React.createElement("div", { className: "donut-center" },
-                React.createElement("div", { className: "donut-big" }, D.femPct.toFixed(0), "%"),
-                React.createElement("div", { className: "donut-lab" }, "feminino")
-              )
-            ),
-            React.createElement("div", { className: "gen-side" },
-              React.createElement("button", { className: "gen-row" + (setOf("sexo").has(FEM) ? " on" : ""), onClick: () => toggle("sexo", FEM) },
-                React.createElement("span", { className: "dot", style: { background: COL.fem } }),
-                React.createElement("span", { className: "gen-name" }, "Feminino"),
-                React.createElement("span", { className: "gen-q" }, fmt(D.gF.q))
-              ),
-              React.createElement("button", { className: "gen-row" + (setOf("sexo").has(MASC) ? " on" : ""), onClick: () => toggle("sexo", MASC) },
-                React.createElement("span", { className: "dot", style: { background: COL.masc } }),
-                React.createElement("span", { className: "gen-name" }, "Masculino"),
-                React.createElement("span", { className: "gen-q" }, fmt(D.gM.q))
-              ),
-              React.createElement("div", { className: "gen-gap" },
-                React.createElement("span", { className: "gen-gap-k" }, "Salário médio"),
-                React.createElement("div", { className: "gen-gap-row" },
-                  React.createElement("span", { style: { color: COL.fem } }, "F " + brl(D.avgF)),
-                  React.createElement("span", { style: { color: COL.masc } }, "M " + brl(D.avgM))
-                ),
-                React.createElement("div", { className: "gen-gap-note", style: { color: D.gapPct >= 0 ? COL.masc : COL.clay } },
-                  D.gapPct >= 0 ? `Homens ganham ${Math.abs(D.gapPct).toFixed(1).replace(".", ",")}% a mais` : `Mulheres ganham ${Math.abs(D.gapPct).toFixed(1).replace(".", ",")}% a mais`
-                )
-              )
-            )
-          )
-        )
-      ),
-
-      // FAIXA ETÁRIA + FAIXA SALARIAL
-      React.createElement("div", { className: "grid g-2" },
-        React.createElement(Card, { title: "Vínculos por faixa etária", sub: "clique para filtrar" },
-          React.createElement(HBars, { items: feItems.map((i) => ({ key: i.key, label: i.label, value: i.q })), color: COL.blue, onPick: (k) => toggle("fe", k), activeSet: setOf("fe") })
-        ),
-        React.createElement(Card, { title: "Vínculos por faixa salarial (SM)", sub: "clique para filtrar", note: "N/C = sem remuneração declarada" },
-          React.createElement(HBars, { items: fsmItems.map((i) => ({ key: i.key, label: i.label, value: i.q })), color: COL.blue, onPick: (k) => toggle("fsm", k), activeSet: setOf("fsm") })
-        )
-      ),
-
-      // DUMBBELL + REGIÃO × GÊNERO
-      React.createElement("div", { className: "grid g-2" },
-        React.createElement(Card, { title: "Salário médio por faixa etária × gênero", note: "Δ = M vs F" },
-          React.createElement("div", { className: "db-legend" },
-            React.createElement("span", null, React.createElement("span", { className: "dot", style: { background: COL.fem } }), "Feminino"),
-            React.createElement("span", null, React.createElement("span", { className: "dot", style: { background: COL.masc } }), "Masculino")
-          ),
-          React.createElement(Dumbbell, { rows: D.dumbbell, max: D.maxSal })
-        ),
-        React.createElement(Card, { title: "Salário médio por região × gênero" },
-          React.createElement("div", { className: "rg" },
-            D.regGender.map((r) =>
-              React.createElement("div", { className: "rg-block", key: r.reg },
-                React.createElement("div", { className: "rg-name" }, r.reg),
-                React.createElement("div", { className: "rg-bar" },
-                  React.createElement("span", { className: "rg-fill", style: { width: 100 * r.f / D.maxSal + "%", background: COL.fem } }),
-                  React.createElement("span", { className: "rg-tag" }, "F · " + brl(r.f))
-                ),
-                React.createElement("div", { className: "rg-bar" },
-                  React.createElement("span", { className: "rg-fill", style: { width: 100 * r.m / D.maxSal + "%", background: COL.masc } }),
-                  React.createElement("span", { className: "rg-tag" }, "M · " + brl(r.m))
-                )
-              )
-            ),
-            React.createElement("div", { className: "db-scale" },
-              React.createElement("span", null, "R$ 0"),
-              React.createElement("span", null, brl(D.maxSal))
-            )
-          )
-        )
-      ),
-
-      // UF + REGIÃO + CNAE
-      React.createElement("div", { className: "grid g-3" },
-        React.createElement(Card, { title: "Vínculos por UF", sub: "clique para filtrar" },
-          React.createElement(HBars, { items: ufSorted.map((i) => ({ key: i.key, label: i.label, value: i.q })), color: COL.blue, onPick: (k) => toggle("uf", k), activeSet: setOf("uf") })
-        ),
-        React.createElement(Card, { title: "Vínculos por região", sub: "clique para filtrar" },
-          React.createElement(HBars, { items: D.reg.map((i) => ({ key: i.key, label: i.label, value: i.q })), color: COL.blue, onPick: (k) => toggle("reg", k), activeSet: setOf("reg") })
-        ),
-        React.createElement(Card, { title: "Top atividades econômicas (CNAE)", sub: "clique para filtrar" },
-          React.createElement(HBars, { items: cnaeTop.map((i) => ({ key: i.key, label: DATA.maps.cnae_nome[i.key], value: i.q })), color: COL.blue, onPick: (k) => toggle("cnae", k), activeSet: setOf("cnae") })
-        )
-      ),
-
-      // MUNICÍPIOS
-      React.createElement(Card, { title: "Municípios com mais vínculos de enfermagem",
-        note: D.munActive ? "ranking responde a Região/UF/Ocupação/Sexo — filtros de faixa/CNAE não se aplicam" : "top 12" },
-        React.createElement("div", { className: "muni" },
-          D.mun.map((m, idx) => {
-            const mx = D.mun.length ? D.mun[0].q : 1;
-            return React.createElement("div", { className: "muni-row", key: m.name + m.uf },
-              React.createElement("span", { className: "muni-rank" }, idx + 1),
-              React.createElement("span", { className: "muni-name" }, m.name, React.createElement("span", { className: "muni-uf" }, m.uf)),
-              React.createElement("span", { className: "muni-track" }, React.createElement("span", { className: "muni-fill", style: { width: 100 * m.q / mx + "%" } })),
-              React.createElement("span", { className: "muni-q" }, fmt(m.q)),
-              React.createElement("span", { className: "muni-avg" }, brl(m.avg))
-            );
-          })
-        )
-      ),
-
-      // RAÇA + ESCOLARIDADE
-      React.createElement("div", { className: "grid g-2" },
-        React.createElement(Card, { title: "Distribuição por raça/cor", sub: "clique para filtrar" },
-          React.createElement(HBars, { items: racaSorted.map((i) => ({ key: i.key, label: i.label, value: i.q })), color: COL.blue, onPick: (k) => toggle("raca", k), activeSet: setOf("raca") })
-        ),
-        React.createElement(Card, { title: "Distribuição por escolaridade", sub: "clique para filtrar" },
-          React.createElement(HBars, { items: grauSorted.map((i) => ({ key: i.key, label: i.label, value: i.q })), color: COL.blue, onPick: (k) => toggle("grau", k), activeSet: setOf("grau") })
-        )
-      ),
-
-      // TEMPORAL
-      React.createElement(Card, { title: "Evolução temporal mês a mês", note: "extrato atual: 1 competência" },
-        React.createElement("div", { className: "temporal" },
-          React.createElement("div", { className: "temporal-chart" },
-            React.createElement("svg", { viewBox: "0 0 600 160", width: "100%", height: "160", preserveAspectRatio: "none" },
-              React.createElement("line", { x1: "40", y1: "130", x2: "580", y2: "130", stroke: COL.border, strokeWidth: "1" }),
-              React.createElement("line", { x1: "40", y1: "20", x2: "40", y2: "130", stroke: COL.border, strokeWidth: "1" }),
-              [0, 1, 2, 3].map((i) => {
-                const x = 40 + (i + 1) * (540 / 5);
-                return React.createElement("line", { key: i, x1: x, y1: "20", x2: x, y2: "130", stroke: COL.track, strokeWidth: "1", strokeDasharray: "3 5" });
-              }),
-              React.createElement("circle", { cx: 40 + 540 / 5, cy: "55", r: "7", fill: COL.blue }),
-              React.createElement("text", { x: 40 + 540 / 5, y: "40", textAnchor: "middle", fontSize: "13", fill: COL.ink, fontWeight: "700" }, fmt(D.tot.q)),
-              React.createElement("text", { x: 40 + 540 / 5, y: "148", textAnchor: "middle", fontSize: "11", fill: COL.ink2 }, "jan/24"),
-              [2, 3, 4, 5].map((i) => React.createElement("text", { key: i, x: 40 + i * (540 / 5), y: "148", textAnchor: "middle", fontSize: "11", fill: COL.ink3 }, "\u2014"))
-            )
-          ),
-          React.createElement("div", { className: "temporal-note" },
-            React.createElement("div", { className: "tn-tag" }, "Por que apenas um ponto?"),
-            React.createElement("p", null, "O extrato cobre somente ", React.createElement("b", null, "janeiro/2024"), ". Série temporal e tendências só podem ser calculadas com múltiplas competências."),
-            React.createElement("p", null, "Reextraia a RAIS para o intervalo desejado mantendo as mesmas colunas — este painel plotará a linha completa sem alterações no código.")
-          )
-        )
-      ),
-
-      // FOOTER
-      React.createElement("footer", { className: "ft" },
-        React.createElement("div", { className: "ft-col" },
-          React.createElement("div", { className: "ft-h" }, "Fonte e método"),
-          React.createElement("p", null, "Microdados ", React.createElement("b", null, "RAIS / Ministério do Trabalho e Emprego"), ", competência 01/2024. Enfermagem definida pela CBO: ", React.createElement("b", null, "Enfermeiro"), " e ", React.createElement("b", null, "Técnico/Auxiliar de Enfermagem"), ".")
-        ),
-        React.createElement("div", { className: "ft-col" },
-          React.createElement("div", { className: "ft-h" }, "Abrangência"),
-          React.createElement("p", null, "UFs: ", React.createElement("b", null, ufScope), " · regiões ", DATA.meta.regioes.join(" e "), " · ", fmt(DATA.meta.n_mun), " municípios · ", fmt(DATA.meta.total), " vínculos.")
-        ),
-        React.createElement("div", { className: "ft-col" },
-          React.createElement("div", { className: "ft-h" }, "Interação"),
-          React.createElement("p", null, "Clique em barras, segmentos e fatias para filtrar; combine vários filtros. Cada gráfico mantém sua própria dimensão visível ao ser filtrado.")
-        )
-      )
-    )
-  );
+  return data;
 }
 
-const CSS = `
-.nrx {
-  --blue:#4f7cff; --blueDeep:#2d57e8; --blueSoft:#1a2340;
-  --ink:#e8eaf0; --ink2:#8b90a7; --ink3:#5a5f75;
-  --surf:#181b24; --surf2:#1e2130; --border:#2a2f42;
-  --canvas:#0f1117; --track:#232738;
-  --fem:#4f7cff; --masc:#ffb347; --clay:#ff5f7e;
-  background:var(--canvas); color:var(--ink);
-  padding:28px 32px;
-  font-family:'DM Sans',system-ui,-apple-system,sans-serif;
-  font-feature-settings:'tnum' 1;
-  -webkit-font-smoothing:antialiased;
-  min-height:100vh;
+function renderTable() {
+  const data = getTableData();
+  const total = data.length;
+  const maxPage = Math.max(1, Math.ceil(total / TBL_PER_PAGE));
+  if (tblPage > maxPage) tblPage = maxPage;
+
+  const slice = data.slice((tblPage - 1) * TBL_PER_PAGE, tblPage * TBL_PER_PAGE);
+
+  document.getElementById('tbl-pg-info').textContent =
+    `${total.toLocaleString('pt-BR')} resultados · Página ${tblPage} de ${maxPage}`;
+
+  const tbody = document.getElementById('tbl-body');
+  tbody.innerHTML = slice.map(r => {
+    const sx = String(r.sexo || '').toUpperCase();
+    const isFem = sx === 'F' || sx === 'FEMININO' || sx === '2';
+    const badge = `<span class="badge ${isFem ? 'badge-f' : 'badge-m'}">${r.sexo ?? '—'}</span>`;
+    const sal = r.remuneracao_media
+      ? 'R$ ' + Number(r.remuneracao_media).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+      : '—';
+    return `<tr>
+      <td>${r.sigla_uf ?? '—'}</td>
+      <td>${r.municipio ?? '—'}</td>
+      <td>${r.regiao ?? '—'}</td>
+      <td>${badge}</td>
+      <td>${r.faixa_etaria ?? '—'}</td>
+      <td>${sal}</td>
+      <td>${r.cnae_divisao ?? '—'}</td>
+      <td>${(r.qtd_vinculos ?? 1).toLocaleString('pt-BR')}</td>
+    </tr>`;
+  }).join('');
+
+  // pagination buttons
+  const pg = document.getElementById('pagination');
+  pg.innerHTML = '';
+  const addBtn = (label, page, disabled = false, active = false) => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    if (disabled) b.disabled = true;
+    if (active) b.classList.add('active');
+    b.addEventListener('click', () => { tblPage = page; renderTable(); });
+    pg.appendChild(b);
+  };
+  addBtn('‹', tblPage - 1, tblPage === 1);
+  const start = Math.max(1, tblPage - 2);
+  const end   = Math.min(maxPage, start + 4);
+  for (let p = start; p <= end; p++) addBtn(p, p, false, p === tblPage);
+  addBtn('›', tblPage + 1, tblPage === maxPage);
+
+  // sort indicators
+  document.querySelectorAll('#data-table thead th').forEach(th => {
+    th.classList.remove('sort-asc','sort-desc');
+    if (th.dataset.col === tblSort.col) {
+      th.classList.add(tblSort.dir === 1 ? 'sort-asc' : 'sort-desc');
+    }
+  });
 }
-.nrx * { box-sizing:border-box; }
-.nrx h1 {
-  font-size:22px; font-weight:700; letter-spacing:-.5px; line-height:1.2;
-  color:var(--ink);
+
+// Table events
+document.getElementById('tbl-search').addEventListener('input', e => {
+  tblSearch = e.target.value;
+  tblPage = 1;
+  renderTable();
+});
+
+document.querySelectorAll('#data-table thead th').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.col;
+    if (tblSort.col === col) tblSort.dir *= -1;
+    else { tblSort.col = col; tblSort.dir = 1; }
+    tblPage = 1;
+    renderTable();
+  });
+});
+
+document.getElementById('btn-prev').addEventListener('click', () => {
+  if (tblPage > 1) { tblPage--; renderTable(); }
+});
+document.getElementById('btn-next').addEventListener('click', () => {
+  tblPage++; renderTable();
+});
+
+// Export CSV
+document.getElementById('btn-export-csv').addEventListener('click', () => {
+  const data = getTableData();
+  const headers = TBL_COLS.join(',');
+  const rows = data.map(r => TBL_COLS.map(c => {
+    const v = r[c] ?? '';
+    const s = String(v);
+    return s.includes(',') ? `"${s}"` : s;
+  }).join(','));
+  const csv = [headers, ...rows].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = 'rais_enfermagem_filtrado.csv';
+  a.click();
+});
+
+// ════════════════════════════════════════════════
+//  TABS
+// ════════════════════════════════════════════════
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    // re-render charts after tab switch (canvas might have been hidden)
+    renderAll();
+  });
+});
+
+// ════════════════════════════════════════════════
+//  BOOT
+// ════════════════════════════════════════════════
+loadData();
+
+function renderEstrategia(){
+
+const d = filteredData;
+
+// perfil dominante
+
+let idade =
+sortedEntries(
+groupBy(d,'faixa_etaria'),
+'vinculos'
+)[0];
+
+let regiao =
+sortedEntries(
+groupBy(d,'regiao'),
+'vinculos'
+)[0];
+
+let cnae =
+sortedEntries(
+groupBy(d,'cnae_divisao'),
+'vinculos'
+)[0];
+
+document.getElementById(
+'st-perfil'
+).innerHTML =
+idade ? idade.label : '-';
+
+document.getElementById(
+'st-regiao'
+).innerHTML =
+regiao ? regiao.label : '-';
+
+document.getElementById(
+'st-cnae'
+).innerHTML =
+cnae ? cnae.label : '-';
+
+// crescimento
+
+let anos =
+sortedEntries(
+groupBy(d,'ano'),
+'vinculos'
+);
+
+if(anos.length>=2){
+
+let atual=anos[0].vinculos;
+let anterior=anos[1].vinculos;
+
+let pct =
+((atual-anterior)/anterior)*100;
+
+document.getElementById(
+'st-crescimento'
+).innerHTML =
+pct.toFixed(1)+"%";
+
 }
-.nrx h1 span { color:var(--ink3); font-weight:400; }
 
-/* HEADER */
-.hd { display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:20px; padding-bottom:20px; border-bottom:1px solid var(--border); }
-.hd-left { display:flex; gap:14px; align-items:center; }
-.hd-icon { width:44px; height:44px; border-radius:12px; background:var(--blueSoft); border:1px solid var(--border); display:grid; place-items:center; flex-shrink:0; }
-.hd-sub { font-size:13px; color:var(--ink3); margin-top:3px; }
-.hd-badges { display:flex; gap:8px; flex-wrap:wrap; }
-.badge { font-size:12px; color:var(--ink2); background:var(--surf); border:1px solid var(--border); padding:6px 13px; border-radius:999px; font-weight:500; }
-.badge b { color:var(--ink); font-weight:600; }
+mkBar(
+'ch-comparacao-ano',
 
-/* COBERTURA */
-.cov { background:var(--surf); border:1px solid var(--border); border-left:3px solid #ffb347; border-radius:12px; padding:13px 16px; margin-bottom:16px; }
-.cov.min .cov-body { display:none; }
-.cov-h { display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
-.cov-tag { font-size:11.5px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#ffb347; }
-.cov-toggle { font-size:11.5px; color:var(--ink3); }
-.cov-body { margin-top:10px; display:grid; gap:7px; }
-.cov-body p { font-size:12.5px; line-height:1.55; color:var(--ink2); }
-.cov-body b { color:var(--ink); }
+anos.map(a=>a.label),
 
-/* FILTROS */
-.fbar { display:flex; gap:20px; flex-wrap:wrap; align-items:flex-end; background:var(--surf); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:12px; }
-.segwrap { display:flex; flex-direction:column; gap:7px; }
-.seg-l { font-size:10px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:var(--ink3); }
-.seg { display:inline-flex; background:var(--canvas); border-radius:8px; padding:3px; gap:2px; border:1px solid var(--border); }
-.seg-b { border:0; background:transparent; font:inherit; font-size:12.5px; color:var(--ink2); padding:5px 12px; border-radius:6px; cursor:pointer; transition:.12s; white-space:nowrap; }
-.seg-b:hover { color:var(--ink); }
-.seg-b.on { background:var(--blueSoft); color:var(--blue); font-weight:600; border:1px solid var(--border); }
-.chips { display:flex; gap:5px; flex-wrap:wrap; }
-.chip { border:1px solid var(--border); background:var(--surf); font:inherit; font-size:12.5px; color:var(--ink2); padding:5px 12px; border-radius:7px; cursor:pointer; transition:.12s; font-weight:500; }
-.chip:hover { border-color:var(--blue); color:var(--blue); }
-.chip.on { background:var(--blueSoft); color:var(--blue); border-color:var(--blue); font-weight:600; }
+[{
+label:"Vínculos",
+data:anos.map(a=>a.vinculos),
+backgroundColor:PALETTE[0]
+}]
 
-/* FILTROS ATIVOS */
-.active { display:flex; gap:7px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
-.active-l { font-size:10.5px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:var(--ink3); margin-right:2px; }
-.achip { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--blue); background:var(--blueSoft); color:var(--blue); font:inherit; font-size:12px; padding:4px 10px; border-radius:7px; cursor:pointer; font-weight:600; }
-.achip-k { font-size:9px; letter-spacing:.4px; text-transform:uppercase; opacity:.65; }
-.achip-x { font-size:14px; line-height:1; opacity:.7; }
-.achip:hover .achip-x { opacity:1; }
-.clearbtn { border-color:var(--border); background:var(--surf); color:var(--ink2); }
-.clearbtn:hover { border-color:var(--clay); color:var(--clay); }
+);
 
-/* GRID */
-.grid { display:grid; gap:14px; margin-bottom:14px; }
-.g-2 { grid-template-columns:1fr 1fr; }
-.g-3 { grid-template-columns:1fr 1fr 1fr; }
-.g-perfil { grid-template-columns:1.1fr .9fr; }
+// salário gênero
 
-/* CARD */
-.card { background:var(--surf); border:1px solid var(--border); border-radius:14px; padding:18px 20px; }
-.card-h { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:14px; }
-.card-title { font-size:11.5px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:var(--ink2); }
-.card-sub { font-size:11px; color:var(--ink3); margin-top:3px; }
-.card-note { font-size:10.5px; color:var(--ink3); text-align:right; max-width:180px; line-height:1.4; }
+let genero =
+sortedEntries(
+groupBy(d,'sexo'),
+'salMedio'
+);
 
-/* KPIs */
-.kpis { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:14px; }
-.kpi { background:var(--surf); border:1px solid var(--border); border-radius:14px; padding:16px 18px; }
-.kpi-label { font-size:10.5px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:var(--ink3); }
-.kpi-v { font-family:'DM Mono',monospace; font-size:26px; font-weight:500; letter-spacing:-.5px; margin-top:8px; line-height:1; color:var(--ink); }
-.kpi-v.sm { font-size:17px; }
-.kpi-s { font-size:11px; color:var(--ink3); margin-top:6px; }
 
-/* BARS */
-.bars { display:flex; flex-direction:column; gap:7px; }
-.bar-row { display:grid; grid-template-columns:100px 1fr 66px; align-items:center; gap:10px; border:0; background:transparent; font:inherit; text-align:left; padding:0; width:100%; transition:opacity .15s; }
-.bar-row.clickable { cursor:pointer; }
-.bar-label { font-size:12px; color:var(--ink2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.bar-row.on .bar-label { color:var(--ink); font-weight:600; }
-.bar-track { height:16px; background:var(--track); border-radius:4px; overflow:hidden; }
-.bar-fill { display:block; height:100%; border-radius:4px; transition:width .4s cubic-bezier(.4,0,.2,1); min-width:2px; }
-.bar-row.clickable:hover .bar-fill { filter:brightness(1.15); }
-.bar-val { font-size:12px; font-weight:600; color:var(--ink); text-align:right; font-family:'DM Mono',monospace; }
+mkBar(
+'ch-gap-salarial',
 
-/* PERFIL */
-.perfil { display:flex; flex-direction:column; }
-.perfil-h { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
-.perfil-tag { font-size:11px; color:var(--ink3); }
-.perfil-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; flex:1; }
-.pf { background:var(--surf2); border-radius:10px; padding:11px 13px; display:flex; flex-direction:column; gap:3px; border:1px solid var(--border); }
-.pf-k { font-size:9.5px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--ink3); }
-.pf-v { font-size:14px; font-weight:700; color:var(--ink); letter-spacing:-.1px; }
-.pf-v.sm { font-size:12px; line-height:1.2; }
-.pf-s { font-size:11px; color:var(--blue); font-weight:600; }
-.perfil-foot { margin-top:12px; padding-top:12px; border-top:1px solid var(--border); font-size:12px; color:var(--ink2); }
-.perfil-foot b { color:var(--ink); }
+genero.map(g=>g.label),
 
-/* GÊNERO */
-.gen { display:flex; gap:18px; align-items:center; }
-.donut-wrap { position:relative; width:148px; height:148px; flex-shrink:0; }
-.donut-center { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
-.donut-big { font-family:'DM Mono',monospace; font-size:28px; font-weight:500; color:var(--blue); line-height:1; }
-.donut-lab { font-size:10px; letter-spacing:.6px; text-transform:uppercase; color:var(--ink3); margin-top:4px; }
-.gen-side { flex:1; display:flex; flex-direction:column; gap:7px; }
-.gen-row { display:flex; align-items:center; gap:9px; border:1px solid transparent; background:var(--surf2); border-radius:9px; padding:9px 12px; cursor:pointer; font:inherit; transition:.12s; }
-.gen-row:hover { border-color:var(--border); }
-.gen-row.on { border-color:var(--blue); background:var(--blueSoft); }
-.dot { width:9px; height:9px; border-radius:3px; flex-shrink:0; }
-.gen-name { font-size:13px; color:var(--ink); flex:1; }
-.gen-q { font-size:13px; font-weight:600; font-family:'DM Mono',monospace; color:var(--ink); }
-.gen-gap { margin-top:4px; padding:10px 12px; background:var(--surf2); border-radius:9px; border:1px solid var(--border); }
-.gen-gap-k { font-size:9.5px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--ink3); }
-.gen-gap-row { display:flex; justify-content:space-between; font-size:13px; font-weight:600; margin-top:5px; font-family:'DM Mono',monospace; }
-.gen-gap-note { font-size:11.5px; font-weight:600; margin-top:6px; }
+[{
+label:"Salário Médio",
+data:genero.map(g=>g.salMedio),
+backgroundColor:PALETTE[4]
+}]
 
-/* DUMBBELL */
-.db-legend,.db-legend span { display:flex; align-items:center; }
-.db-legend { gap:16px; margin-bottom:12px; font-size:11.5px; color:var(--ink2); }
-.db-legend span { gap:6px; }
-.db { display:flex; flex-direction:column; gap:10px; }
-.db-row { display:grid; grid-template-columns:62px 1fr 52px; align-items:center; gap:10px; }
-.db-label { font-size:11.5px; color:var(--ink2); white-space:nowrap; }
-.db-track { position:relative; height:16px; }
-.db-axis { position:absolute; left:0; right:0; top:50%; height:2px; background:var(--track); border-radius:2px; }
-.db-conn { position:absolute; top:50%; height:3px; background:#3a3f55; transform:translateY(-50%); border-radius:2px; }
-.db-dot { position:absolute; top:50%; width:11px; height:11px; border-radius:50%; transform:translate(-50%,-50%); border:2px solid var(--surf); box-shadow:0 1px 3px rgba(0,0,0,.4); }
-.db-gap { font-size:12px; font-weight:600; text-align:right; font-family:'DM Mono',monospace; }
-.db-scale { display:flex; justify-content:space-between; font-size:10px; color:var(--ink3); margin-top:8px; padding:0 0 0 72px; }
+);
 
-/* REGIÃO × GÊNERO */
-.rg { display:flex; flex-direction:column; gap:13px; }
-.rg-block { display:flex; flex-direction:column; gap:6px; }
-.rg-name { font-size:12px; font-weight:600; color:var(--ink); }
-.rg-bar { position:relative; height:20px; background:var(--track); border-radius:5px; overflow:hidden; }
-.rg-fill { display:block; height:100%; border-radius:5px; transition:width .4s; opacity:.9; }
-.rg-tag { position:absolute; left:9px; top:50%; transform:translateY(-50%); font-size:10.5px; font-weight:600; color:#fff; }
+document.getElementById(
+'insights'
+).innerHTML = `
 
-/* MUNICÍPIOS */
-.muni { display:flex; flex-direction:column; gap:7px; }
-.muni-row { display:grid; grid-template-columns:24px 1fr 1.4fr 62px 80px; align-items:center; gap:10px; }
-.muni-rank { font-size:11px; font-weight:700; color:var(--ink3); text-align:center; font-family:'DM Mono',monospace; }
-.muni-name { font-size:12.5px; color:var(--ink); display:flex; align-items:center; gap:7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.muni-uf { font-size:10px; font-weight:700; color:var(--blue); background:var(--blueSoft); padding:2px 6px; border-radius:5px; }
-.muni-track { height:12px; background:var(--track); border-radius:3px; overflow:hidden; }
-.muni-fill { display:block; height:100%; background:var(--blue); border-radius:3px; opacity:.7; transition:width .4s; }
-.muni-q { font-size:12.5px; font-weight:600; text-align:right; font-family:'DM Mono',monospace; color:var(--ink); }
-.muni-avg { font-size:11.5px; color:var(--ink2); text-align:right; font-family:'DM Mono',monospace; }
 
-/* TEMPORAL */
-.temporal { display:grid; grid-template-columns:1.3fr 1fr; gap:20px; align-items:center; }
-.temporal-chart { background:var(--surf2); border-radius:10px; padding:10px 12px; border:1px solid var(--border); }
-.tn-tag { font-size:11px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#ffb347; margin-bottom:8px; }
-.temporal-note p { margin:0 0 8px; font-size:12.5px; line-height:1.55; color:var(--ink2); }
-.temporal-note b { color:var(--ink); }
+<b>Principais descobertas:</b>
 
-/* EMPTY */
-.emptybox { background:var(--surf); border:1px dashed var(--border); border-radius:14px; padding:42px 24px; text-align:center; margin-bottom:14px; }
-.empty-big { font-size:17px; font-weight:700; color:var(--ink); }
-.emptybox p { font-size:13px; color:var(--ink2); margin:8px 0 18px; }
+<br><br>
 
-/* FOOTER */
-.ft { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; border-top:1px solid var(--border); padding-top:18px; margin-top:6px; }
-.ft-h { font-size:10px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:var(--ink3); margin-bottom:7px; }
-.ft-col p { font-size:11.5px; line-height:1.6; color:var(--ink3); }
-.ft-col b { color:var(--ink2); }
 
-@media(max-width:900px) {
-  .g-2,.g-3,.g-perfil { grid-template-columns:1fr; }
-  .kpis { grid-template-columns:repeat(2,1fr); }
-  .temporal { grid-template-columns:1fr; }
-  .ft { grid-template-columns:1fr; }
-  .gen { flex-direction:column; }
-}
-@media(max-width:520px) {
-  .nrx { padding:16px; }
-  .kpis { grid-template-columns:1fr 1fr; }
-  .perfil-grid { grid-template-columns:1fr; }
-  .bar-row { grid-template-columns:84px 1fr 56px; }
-  .muni-row { grid-template-columns:20px 1fr 56px 72px; }
-  .muni-track { display:none; }
-}
+• O perfil predominante está concentrado na faixa:
+<b>${idade?.label}</b>
+
+
+<br>
+
+• A maior concentração de empregos ocorre na região:
+<b>${regiao?.label}</b>
+
+
+<br>
+
+• O setor econômico que mais emprega enfermagem é:
+<b>${cnae?.label}</b>
+
+
+<br>
+
+• O dashboard permite apoiar decisões de:
+<br>
+✔ expansão de unidades
+<br>
+✔ planejamento de contratação
+<br>
+✔ capacitação profissional
+<br>
+✔ análise salarial
+
 `;
 
-// ─── App root com carregamento assíncrono do CSV ─────────────────────────────
-function App() {
-  const [ready, setReady] = useState(false);
-  const [error, setError] = useState(null);
-  const [progress, setProgress] = useState("Carregando dados...");
-
-  useEffect(() => {
-    (async () => {
-      try {
-        setProgress("Baixando CSV...");
-        const res = await fetch(CSV_URL);
-        if (!res.ok) throw new Error("Erro HTTP " + res.status);
-        const text = await res.text();
-        setProgress("Processando registros...");
-        // yield para o browser atualizar o DOM com a mensagem
-        await new Promise(r => setTimeout(r, 30));
-        const rows = parseCSV(text);
-        DATA = buildDATA(rows);
-        initGlobals();
-        setReady(true);
-      } catch (e) {
-        setError(e.message);
-      }
-    })();
-  }, []);
-
-  if (error) return React.createElement("div", { style: { color:"#ff5f7e", padding:"40px", fontFamily:"monospace" } },
-    "Erro ao carregar dados: " + error
-  );
-
-  if (!ready) return React.createElement("div", {
-    style: {
-      minHeight:"100vh", display:"flex", flexDirection:"column",
-      alignItems:"center", justifyContent:"center",
-      background:"#0f1117", color:"#8b90a7",
-      fontFamily:"'DM Sans',sans-serif", gap:"16px"
-    }
-  },
-    React.createElement("div", { style: { fontSize:"32px" } }, "⚕"),
-    React.createElement("div", { style: { fontSize:"15px", color:"#4f7cff", fontWeight:"600" } }, progress),
-    React.createElement("div", { style: {
-      width:"200px", height:"3px", background:"#2a2f42", borderRadius:"99px", overflow:"hidden"
-    }},
-      React.createElement("div", { style: {
-        height:"100%", width:"60%", background:"#4f7cff",
-        borderRadius:"99px", animation:"pulse 1.4s ease-in-out infinite"
-      }})
-    ),
-    React.createElement("style", null, `@keyframes pulse { 0%,100%{opacity:.4}50%{opacity:1} }`)
-  );
-
-  return React.createElement(Dashboard);
 }
-
-const __root = ReactDOM.createRoot(document.getElementById("root"));
-__root.render(React.createElement(App));
 </script>
 </body>
 </html>
